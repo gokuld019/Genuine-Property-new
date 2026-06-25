@@ -2,17 +2,18 @@
 import { useRef, useEffect } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import Link from "next/link";
 
 gsap.registerPlugin(ScrollTrigger);
 
 export default function WhyChooseSection() {
   const features = [
-    "Wide Roads & Better Connectivity.",
-    "Underground Infrastructure",
-    "24/7 Security & Surveillance",
-    "Reliable Utility Connections",
-    "Green Open Spaces",
-    "Tree-Lined Avenues",
+    "CMDA & DTCP Approved",
+    "RERA Registered Developments",
+    "Gated Communities",
+    "Bank Loan Assistance",
+    "Clear Legal Documentation",
+    "Trusted Post-Sale Support",
   ];
 
   const galleryImages = [
@@ -194,33 +195,46 @@ export default function WhyChooseSection() {
               ))}
             </span>
 
-            {/* Line 2: "It's A Better Life." */}
-            <span
-              ref={headingLine2Ref}
-              style={{ display: "block", overflow: "hidden" }}
-            >
-              {"A".split(" ").map((word, i) => (
-                <span
-                  key={i}
-                  className="word-wrap"
-                  style={{ display: "inline-block", overflow: "hidden", marginRight: "0.26em" }}
-                >
-                  <span className="word" style={{ display: "inline-block" }}>{word}</span>
-                </span>
-              ))}
-              {" "}
-              <span className="word-wrap" style={{ display: "inline-block", overflow: "hidden", marginRight: "0.26em" }}>
-                <span className="word why-accent" style={{ display: "inline-block" }}>Place To</span>
-              </span>
-              <span className="word-wrap" style={{ display: "inline-block", overflow: "hidden" }}>
-                <span className="word why-accent" style={{ display: "inline-block" }}>Belong.</span>
-              </span>
-            </span>
+           {/* Line 2: "it's a better life." */}
+<span
+  ref={headingLine2Ref}
+  style={{ display: "block", overflow: "hidden" }}
+>
+  <span
+    className="word-wrap"
+    style={{
+      display: "inline-block",
+      overflow: "hidden",
+      marginRight: "0.26em",
+    }}
+  >
+    <span
+      className="word why-accent"
+      style={{ display: "inline-block" }}
+    >
+      A Better Future
+    </span>
+  </span>
+
+  <span
+    className="word-wrap"
+    style={{
+      display: "inline-block",
+      overflow: "hidden",
+    }}
+  >
+    <span
+      className="word why-accent"
+      style={{ display: "inline-block" }}
+    >
+      life.
+    </span>
+  </span>
+</span>
           </h2>
 
           <p className="why-subtext" ref={subtextRef}>
-At Genuine Property Developers, we don't simply develop land. We create destinations where families celebrate milestones, children grow up with memories, and every square foot becomes part of a bigger story.
-As one of the leading developers in Chennai, our vision is to create plotted communities that bring together trust, thoughtful planning, and lasting value.
+For over 15 years, Genuine Property Developers has helped families invest confidently in premium plots across Chennai's fastest-growing locations.
           </p>
 
           {/* Feature list */}
@@ -239,13 +253,13 @@ As one of the leading developers in Chennai, our vision is to create plotted com
           </div>
 
           {/* CTA */}
-          <a href="#why" className="why-cta" ref={ctaRef}>
-            KNOW MORE
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="5" y1="12" x2="19" y2="12" />
-              <polyline points="12 5 19 12 12 19" />
-            </svg>
-          </a>
+<Link href="/aboutus" className="why-cta" ref={ctaRef}>
+  KNOW MORE
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <line x1="5" y1="12" x2="19" y2="12" />
+    <polyline points="12 5 19 12 12 19" />
+  </svg>
+</Link>
         </div>
 
         {/* ── Right: Images ── */}

@@ -18,12 +18,13 @@ const TIME_SLOTS = [
 
 export default function LocationAndGallerySection() {
   const sectionRef = useRef(null);
+  const ctxRef = useRef(null);
   const timerRef = useRef(null);
-  const brochureTimerRef = useRef(null);
+  const enquiryTimerRef = useRef(null);
 
   // ── visit modal state ──
   const [visitOpen, setVisitOpen]   = useState(false);
-  const [visitPhase, setVisitPhase] = useState("idle"); // idle | entering | entered | leaving
+  const [visitPhase, setVisitPhase] = useState("idle");
   const [step, setStep]               = useState(1);
   const [submitted, setSubmitted]     = useState(false);
   const [selectedSlot, setSelectedSlot] = useState("");
@@ -32,12 +33,12 @@ export default function LocationAndGallerySection() {
     project: "", date: "", message: "",
   });
 
-  // ── Brochure modal states ──
-  const [brochureOpen, setBrochureOpen]   = useState(false);
-  const [brochurePhase, setBrochurePhase] = useState("idle");
-  const [brochureSubmitted, setBrochureSubmitted] = useState(false);
-  const [brochureLoading, setBrochureLoading] = useState(false);
-  const [brochureFormData, setBrochureFormData] = useState({
+  // ── Enquiry modal states ──
+  const [enquiryOpen, setEnquiryOpen]   = useState(false);
+  const [enquiryPhase, setEnquiryPhase] = useState("idle");
+  const [enquirySubmitted, setEnquirySubmitted] = useState(false);
+  const [enquiryLoading, setEnquiryLoading] = useState(false);
+  const [enquiryFormData, setEnquiryFormData] = useState({
     name: "", phone: "", email: "", city: ""
   });
 
@@ -45,23 +46,23 @@ export default function LocationAndGallerySection() {
 
   /* ── body scroll lock ── */
   useEffect(() => {
-    document.body.style.overflow = (visitOpen || brochureOpen) ? "hidden" : "";
+    document.body.style.overflow = (visitOpen || enquiryOpen) ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
-  }, [visitOpen, brochureOpen]);
+  }, [visitOpen, enquiryOpen]);
 
   /* ── escape key closes modals ── */
   useEffect(() => {
-    if (!visitOpen && !brochureOpen) return;
+    if (!visitOpen && !enquiryOpen) return;
     const fn = (e) => {
       if (e.key === "Escape") {
-        if (brochureOpen) closeBrochure();
+        if (enquiryOpen) closeEnquiry();
         if (visitOpen) closeVisit();
       }
     };
     document.addEventListener("keydown", fn);
     return () => document.removeEventListener("keydown", fn);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visitOpen, brochureOpen]);
+  }, [visitOpen, enquiryOpen]);
 
   /* ── open visit modal ── */
   const openVisit = useCallback((e) => {
@@ -89,187 +90,236 @@ export default function LocationAndGallerySection() {
     }, 280);
   }, []);
 
-  /* ── open/close Brochure ── */
-  const openBrochure = useCallback((e) => {
+  /* ── open/close Enquiry ── */
+  const openEnquiry = useCallback((e) => {
     if (e) e.preventDefault();
-    setBrochureSubmitted(false);
-    setBrochureLoading(false);
-    setBrochureFormData({ name: "", phone: "", email: "", city: "" });
-    setBrochureOpen(true);
-    setBrochurePhase("idle");
+    setEnquirySubmitted(false);
+    setEnquiryLoading(false);
+    setEnquiryFormData({ name: "", phone: "", email: "", city: "" });
+    setEnquiryOpen(true);
+    setEnquiryPhase("idle");
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => setBrochurePhase("entering"));
+      requestAnimationFrame(() => setEnquiryPhase("entering"));
     });
-    clearTimeout(brochureTimerRef.current);
-    brochureTimerRef.current = setTimeout(() => setBrochurePhase("entered"), 380);
+    clearTimeout(enquiryTimerRef.current);
+    enquiryTimerRef.current = setTimeout(() => setEnquiryPhase("entered"), 380);
   }, []);
 
-  const closeBrochure = useCallback(() => {
-    setBrochurePhase("leaving");
-    clearTimeout(brochureTimerRef.current);
-    brochureTimerRef.current = setTimeout(() => {
-      setBrochureOpen(false);
-      setBrochurePhase("idle");
-      setBrochureSubmitted(false);
-      setBrochureFormData({ name: "", phone: "", email: "", city: "" });
-      setBrochureLoading(false);
+  const closeEnquiry = useCallback(() => {
+    setEnquiryPhase("leaving");
+    clearTimeout(enquiryTimerRef.current);
+    enquiryTimerRef.current = setTimeout(() => {
+      setEnquiryOpen(false);
+      setEnquiryPhase("idle");
+      setEnquirySubmitted(false);
+      setEnquiryFormData({ name: "", phone: "", email: "", city: "" });
+      setEnquiryLoading(false);
     }, 280);
   }, []);
 
-  const handleBrochureChange = (e) =>
-    setBrochureFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleEnquiryChange = (e) =>
+    setEnquiryFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
-  const handleBrochureSubmit = (e) => {
+  const handleEnquirySubmit = (e) => {
     e.preventDefault();
-    setBrochureLoading(true);
+    setEnquiryLoading(true);
     setTimeout(() => {
-      setBrochureLoading(false);
-      setBrochureSubmitted(true);
-      const link = document.createElement("a");
-      link.href = "/brochure.pdf";
-      link.download = "GPD-Brochure.pdf";
-      link.click();
-    }, 1400);
+      setEnquiryLoading(false);
+      setEnquirySubmitted(true);
+    }, 1500);
   };
 
   const handleField = (key, val) => setFormData(p => ({ ...p, [key]: val }));
 
+  // ════════════════════════════════════════
+  // GSAP Scroll Animations
+  // ════════════════════════════════════════
   useEffect(() => {
-    let ctx;
+    let isMounted = true;
 
-    const init = async () => {
-      const { gsap } = await import("gsap");
-      const { ScrollTrigger } = await import("gsap/ScrollTrigger");
-      const { SplitText } = await import("gsap/SplitText");
-      gsap.registerPlugin(ScrollTrigger, SplitText);
+    const initGSAP = async () => {
+      try {
+        const { gsap } = await import("gsap");
+        const { ScrollTrigger } = await import("gsap/ScrollTrigger");
+        const { SplitText } = await import("gsap/SplitText");
+        gsap.registerPlugin(ScrollTrigger, SplitText);
 
-      ctx = gsap.context(() => {
-        const sec = sectionRef.current;
+        if (!isMounted || !sectionRef.current) return;
 
-        gsap.from(sec.querySelector(".loc-banner-img"), {
-          scrollTrigger: {
-            trigger: sec.querySelector(".loc-banner-img"),
-            start: "top 85%",
-            toggleActions: "play none none none",
-          },
-          opacity: 0,
-          scale: 1.04,
-          duration: 1.1,
-          ease: "expo.out",
-        });
+        const ctx = gsap.context(() => {
+          const sec = sectionRef.current;
+          if (!sec) return;
 
-        gsap.from(sec.querySelector(".cta-banner"), {
-          scrollTrigger: {
-            trigger: sec.querySelector(".cta-banner"),
-            start: "top 88%",
-            toggleActions: "play none none none",
-          },
-          y: 40,
-          opacity: 0,
-          duration: 0.8,
-          ease: "power3.out",
-        });
+          const $ = (sel) => {
+            const el = sec.querySelector(sel);
+            if (!el) console.warn(`[LocationSection] Element not found: ${sel}`);
+            return el;
+          };
 
-        const subLabel = sec.querySelector(".cta-sub");
-        if (subLabel) {
-          const split = new SplitText(subLabel, { type: "words" });
-          gsap.from(split.words, {
-            scrollTrigger: {
-              trigger: sec.querySelector(".cta-banner"),
-              start: "top 88%",
-              toggleActions: "play none none none",
-            },
-            opacity: 0,
-            y: 8,
-            stagger: 0.06,
-            duration: 0.45,
-            ease: "power2.out",
-            delay: 0.3,
-          });
-        }
+          // ── Banner Image Animation ──
+          const bannerImg = $(".loc-banner-img");
+          if (bannerImg) {
+            gsap.from(bannerImg, {
+              scrollTrigger: {
+                trigger: bannerImg,
+                start: "top 85%",
+                toggleActions: "play none none none",
+              },
+              opacity: 0,
+              scale: 1.04,
+              duration: 1.1,
+              ease: "expo.out",
+            });
+          }
 
-        const ctaHeading = sec.querySelector(".cta-heading");
-        if (ctaHeading) {
-          const split = new SplitText(ctaHeading, {
-            type: "words,lines",
-            linesClass: "cta-line",
-          });
-          sec.querySelectorAll(".cta-line").forEach((l) => {
-            l.style.overflow = "hidden";
-            l.style.display = "block";
-          });
-          gsap.from(split.words, {
-            scrollTrigger: {
-              trigger: sec.querySelector(".cta-banner"),
-              start: "top 88%",
-              toggleActions: "play none none none",
-            },
-            y: "110%",
-            opacity: 0,
-            stagger: 0.08,
-            duration: 0.7,
-            ease: "expo.out",
-            delay: 0.2,
-          });
-        }
+          // ── CTA Banner Container ──
+          const ctaBanner = $(".cta-banner");
+          if (ctaBanner) {
+            gsap.from(ctaBanner, {
+              scrollTrigger: {
+                trigger: ctaBanner,
+                start: "top 88%",
+                toggleActions: "play none none none",
+              },
+              y: 40,
+              opacity: 0,
+              duration: 0.8,
+              ease: "power3.out",
+            });
 
-        gsap.from(sec.querySelectorAll(".cta-feature"), {
-          scrollTrigger: {
-            trigger: sec.querySelector(".cta-banner"),
-            start: "top 88%",
-            toggleActions: "play none none none",
-          },
-          y: 20,
-          opacity: 0,
-          stagger: 0.1,
-          duration: 0.55,
-          ease: "power3.out",
-          delay: 0.4,
-        });
+            const subLabel = ctaBanner.querySelector(".cta-sub");
+            if (subLabel) {
+              const split = new SplitText(subLabel, { type: "words" });
+              gsap.set(split.words, { opacity: 0, y: 8 });
+              gsap.to(split.words, {
+                scrollTrigger: {
+                  trigger: ctaBanner,
+                  start: "top 88%",
+                  toggleActions: "play none none none",
+                },
+                opacity: 1,
+                y: 0,
+                stagger: 0.06,
+                duration: 0.45,
+                ease: "power2.out",
+                delay: 0.3,
+              });
+            }
 
-        gsap.from(sec.querySelectorAll(".cta-icon"), {
-          scrollTrigger: {
-            trigger: sec.querySelector(".cta-banner"),
-            start: "top 88%",
-            toggleActions: "play none none none",
-          },
-          scale: 0,
-          opacity: 0,
-          stagger: 0.1,
-          duration: 0.4,
-          ease: "back.out(2.5)",
-          delay: 0.5,
-        });
+            const ctaHeading = ctaBanner.querySelector(".cta-heading");
+            if (ctaHeading) {
+              const split = new SplitText(ctaHeading, {
+                type: "words,lines",
+                linesClass: "cta-line",
+              });
+              ctaBanner.querySelectorAll(".cta-line").forEach((l) => {
+                l.style.overflow = "hidden";
+                l.style.display = "block";
+              });
+              gsap.set(split.words, { y: "110%", opacity: 0 });
+              gsap.to(split.words, {
+                scrollTrigger: {
+                  trigger: ctaBanner,
+                  start: "top 88%",
+                  toggleActions: "play none none none",
+                },
+                y: "0%",
+                opacity: 1,
+                stagger: 0.08,
+                duration: 0.7,
+                ease: "expo.out",
+                delay: 0.2,
+              });
+            }
 
-        gsap.from(sec.querySelector(".cta-btn"), {
-          scrollTrigger: {
-            trigger: sec.querySelector(".cta-banner"),
-            start: "top 88%",
-            toggleActions: "play none none none",
-          },
-          x: 30,
-          opacity: 0,
-          duration: 0.6,
-          ease: "power3.out",
-          delay: 0.55,
-        });
-      }, sectionRef);
+            const features = ctaBanner.querySelectorAll(".cta-feature");
+            if (features.length > 0) {
+              gsap.from(features, {
+                scrollTrigger: {
+                  trigger: ctaBanner,
+                  start: "top 88%",
+                  toggleActions: "play none none none",
+                },
+                y: 20,
+                opacity: 0,
+                stagger: 0.1,
+                duration: 0.55,
+                ease: "power3.out",
+                delay: 0.4,
+              });
+            }
+
+            const icons = ctaBanner.querySelectorAll(".cta-icon");
+            if (icons.length > 0) {
+              gsap.from(icons, {
+                scrollTrigger: {
+                  trigger: ctaBanner,
+                  start: "top 88%",
+                  toggleActions: "play none none none",
+                },
+                scale: 0,
+                opacity: 0,
+                stagger: 0.1,
+                duration: 0.4,
+                ease: "back.out(2.5)",
+                delay: 0.5,
+              });
+            }
+
+            const ctaBtn = ctaBanner.querySelector(".cta-btn");
+            if (ctaBtn) {
+              gsap.from(ctaBtn, {
+                scrollTrigger: {
+                  trigger: ctaBanner,
+                  start: "top 88%",
+                  toggleActions: "play none none none",
+                },
+                x: 30,
+                opacity: 0,
+                duration: 0.6,
+                ease: "power3.out",
+                delay: 0.55,
+              });
+            }
+          }
+
+          ScrollTrigger.refresh();
+
+        }, sectionRef);
+
+        ctxRef.current = ctx;
+
+      } catch (error) {
+        console.error("[LocationSection] GSAP initialization failed:", error);
+      }
     };
 
-    init();
-    return () => ctx && ctx.revert();
+    initGSAP();
+
+    return () => {
+      isMounted = false;
+      if (ctxRef.current) {
+        ctxRef.current.revert();
+        ctxRef.current = null;
+      }
+    };
   }, []);
 
   return (
     <div
       ref={sectionRef}
-      style={{ fontFamily: "'Sora', 'DM Sans', sans-serif", background: "#f5f5f5" }}
+      style={{
+        fontFamily: "'Sora', 'DM Sans', sans-serif",
+        background: "#f5f5f5",
+        overflowX: "hidden",   /* ← KEY FIX: prevents horizontal scrollbar */
+      }}
     >
       {/* ── Clickable Banner Image ── */}
       <a
         href="https://www.google.com/maps/place/GENUINE+PROPERTY+DEVELOPERS/@12.9254935,80.1091582,1099m"
         target="_blank"
         rel="noopener noreferrer"
+        className="loc-banner-link"
       >
         <img
           className="loc-banner-img"
@@ -279,119 +329,132 @@ export default function LocationAndGallerySection() {
         />
       </a>
 
-      {/* ── CTA Banner ── */}
-      <div
-        className="cta-banner"
-        style={{
-          background: "linear-gradient(135deg, #8b1a1a 0%, #b03030 50%, #8b1a1a 100%)",
-          margin: "0px 40px 60px",
-          borderRadius: "14px 14px 0px 0px",
-          overflow: "hidden",
-          position: "relative",
-          maxWidth: "90%",
-          marginLeft: "auto",
-          marginRight: "auto",
-        }}
-      >
-        {/* Background image overlay */}
+      {/* ── CTA Banner wrapper — clips any overflow ── */}
+      <div className="cta-banner-wrapper">
         <div
+          className="cta-banner"
           style={{
-            position: "absolute",
-            inset: 0,
-            backgroundImage: "url('/cta-bg.jpg')",
-            backgroundSize: "cover",
-            backgroundPosition: "right center",
-            opacity: 0.2,
-          }}
-        />
-
-        {/* Desktop inner layout */}
-        <div
-          className="cta-inner"
-          style={{
+            background: "linear-gradient(135deg, #8b1a1a 0%, #b03030 50%, #8b1a1a 100%)",
+            borderRadius: "14px 14px 0px 0px",
+            overflow: "hidden",
             position: "relative",
-            zIndex: 1,
-            display: "grid",
-            gridTemplateColumns: "1fr auto auto auto auto",
-            alignItems: "center",
-            padding: "28px 40px",
-            gap: "32px",
           }}
         >
-          {/* Left text */}
-          <div className="cta-text-block" style={{ borderRight: "1px solid rgba(255,255,255,0.25)", paddingRight: "32px" }}>
-            <p className="cta-sub" style={{ color: "rgba(255,255,255,0.8)", fontSize: "13px", margin: "0 0 4px" }}>
-              Your Dream Plot Is Just A
-            </p>
-            <h3
-              className="cta-heading"
-              style={{ color: "#fff", fontSize: "clamp(20px, 2vw, 28px)", fontWeight: 800, margin: 0 }}
-            >
-              Decision Away!
-            </h3>
-          </div>
+          {/* Background image overlay */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              backgroundImage: "url('/cta-bg.jpg')",
+              backgroundSize: "cover",
+              backgroundPosition: "right center",
+              opacity: 0.2,
+            }}
+          />
 
-          <CtaFeature icon={<LocationIcon />} label="Prime Locations" />
-          <CtaFeature icon={<EmiIcon />} label="Easy EMI Options" />
-          <CtaFeature icon={<LegalIcon />} label="100% Legal Security" />
-
-          {/* CTA Buttons Group */}
-          <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-            <button
-              className="cta-btn brochure-btn"
-              onClick={openBrochure}
+          {/* Desktop inner layout */}
+          <div
+            className="cta-inner"
+            style={{
+              position: "relative",
+              zIndex: 1,
+              display: "grid",
+              gridTemplateColumns: "1fr auto auto auto auto",
+              alignItems: "center",
+              padding: "28px 40px",
+              gap: "32px",
+            }}
+          >
+            {/* Left text */}
+            <div
+              className="cta-text-block"
               style={{
-                background: "transparent",
-                color: "#fff",
-                padding: "14px 20px",
-                borderRadius: "6px",
-                fontSize: "12px",
-                fontWeight: 700,
-                letterSpacing: "0.08em",
-                textDecoration: "none",
-                whiteSpace: "nowrap",
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                textTransform: "uppercase",
-                border: "1.5px solid rgba(255,255,255,0.4)",
-                cursor: "pointer",
+                borderRight: "1px solid rgba(255,255,255,0.25)",
+                paddingRight: "32px",
               }}
             >
-              📄 BROCHURE
-            </button>
-            
+              <p
+                className="cta-sub"
+                style={{
+                  color: "rgba(255,255,255,0.8)",
+                  fontSize: "13px",
+                  margin: "0 0 4px",
+                }}
+              >
+                Your Dream Plot Is Just A
+              </p>
+              <h3
+                className="cta-heading"
+                style={{
+                  color: "#fff",
+                  fontSize: "clamp(20px, 2vw, 28px)",
+                  fontWeight: 800,
+                  margin: 0,
+                }}
+              >
+                Decision Away!
+              </h3>
+            </div>
+
+            <CtaFeature icon={<LocationIcon />} label="Prime Locations" />
+            <CtaFeature icon={<EmiIcon />} label="Easy EMI Options" />
+            <CtaFeature icon={<LegalIcon />} label="100% Legal Security" />
+
+            {/* CTA Buttons Group */}
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+              <button
+                className="cta-btn enquiry-btn"
+                onClick={openEnquiry}
+                style={{
+                  background: "transparent",
+                  color: "#fff",
+                  padding: "14px 20px",
+                  borderRadius: "6px",
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  letterSpacing: "0.08em",
+                  textDecoration: "none",
+                  whiteSpace: "nowrap",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
+                  textTransform: "uppercase",
+                  border: "1.5px solid rgba(255,255,255,0.4)",
+                  cursor: "pointer",
+                }}
+              >
+                ENQUIRE NOW
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* ════════════════════════════════════════
-          BROCHURE MODAL (from HeroSection)
+          ENQUIRY MODAL
       ════════════════════════════════════════ */}
-      {brochureOpen && (
+      {enquiryOpen && (
         <div
-          className={`gpd-modal-backdrop${brochurePhase !== "idle" ? ` ${brochurePhase}` : ""}`}
-          onClick={closeBrochure}
+          className={`gpd-modal-backdrop${enquiryPhase !== "idle" ? ` ${enquiryPhase}` : ""}`}
+          onClick={closeEnquiry}
         >
           <div className="gpd-modal-card" onClick={(e) => e.stopPropagation()}>
 
-            {/* ── CLOSE BUTTON ── */}
-            <button className="gpd-close-btn" onClick={closeBrochure} aria-label="Close">
+            <button className="gpd-close-btn" onClick={closeEnquiry} aria-label="Close">
               <X size={15} />
             </button>
 
-            {/* ── LEFT: FORM ── */}
             <div className="gpd-form-col">
-              {!brochureSubmitted ? (
+              {!enquirySubmitted ? (
                 <>
                   <div className="gpd-tag-pill">
                     <div className="gpd-tag-dot" />
-                    <span>Exclusive Download</span>
+                    <span>Quick Enquiry</span>
                   </div>
-                  <h2 className="gpd-form-heading">Get Our Brochure</h2>
-                  <p className="gpd-form-sub">Share a few details and we&apos;ll send it right away.</p>
+                  <h2 className="gpd-form-heading">Get In Touch</h2>
+                  <p className="gpd-form-sub">Share your details and our team will reach out to you shortly.</p>
 
-                  <form onSubmit={handleBrochureSubmit} className="gpd-fields-block">
+                  <form onSubmit={handleEnquirySubmit} className="gpd-fields-block">
                     <div className="gpd-field-row">
                       <div className="gpd-field">
                         <label>Full Name <span style={{ color:"#b03030" }}>*</span></label>
@@ -401,7 +464,7 @@ export default function LocationAndGallerySection() {
                           </span>
                           <input
                             className="gpd-f" type="text" name="name" required
-                            placeholder="Your name" value={brochureFormData.name} onChange={handleBrochureChange}
+                            placeholder="Your name" value={enquiryFormData.name} onChange={handleEnquiryChange}
                           />
                         </div>
                       </div>
@@ -413,7 +476,7 @@ export default function LocationAndGallerySection() {
                           </span>
                           <input
                             className="gpd-f" type="tel" name="phone" required
-                            placeholder="+91 XXXXX XXXXX" value={brochureFormData.phone} onChange={handleBrochureChange}
+                            placeholder="+91 XXXXX XXXXX" value={enquiryFormData.phone} onChange={handleEnquiryChange}
                           />
                         </div>
                       </div>
@@ -428,7 +491,7 @@ export default function LocationAndGallerySection() {
                           </span>
                           <input
                             className="gpd-f" type="email" name="email"
-                            placeholder="you@email.com" value={brochureFormData.email} onChange={handleBrochureChange}
+                            placeholder="you@email.com" value={enquiryFormData.email} onChange={handleEnquiryChange}
                           />
                         </div>
                       </div>
@@ -440,25 +503,24 @@ export default function LocationAndGallerySection() {
                           </span>
                           <input
                             className="gpd-f" type="text" name="city"
-                            placeholder="Chennai, Bangalore…" value={brochureFormData.city} onChange={handleBrochureChange}
+                            placeholder="Chennai, Bangalore…" value={enquiryFormData.city} onChange={handleEnquiryChange}
                           />
                         </div>
                       </div>
                     </div>
 
-                    <button type="submit" className="gpd-btn-brochure" disabled={brochureLoading} style={{ marginTop:"10px" }}>
-                      {brochureLoading ? (
+                    <button type="submit" className="gpd-btn-submit" disabled={enquiryLoading} style={{ marginTop:"10px" }}>
+                      {enquiryLoading ? (
                         <>
                           <span className="gpd-spinner" />
-                          Preparing Download…
+                          Submitting…
                         </>
                       ) : (
                         <>
-                          Download Brochure
+                          Submit Enquiry
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="7 10 12 15 17 10" />
-                            <line x1="12" y1="15" x2="12" y2="3" />
+                            <line x1="22" y1="2" x2="11" y2="13" />
+                            <polyline points="22 2 15 22 11 13 2 9 22 2" />
                           </svg>
                         </>
                       )}
@@ -469,22 +531,17 @@ export default function LocationAndGallerySection() {
               ) : (
                 <div className="gpd-success">
                   <div className="gpd-success-ring">✅</div>
-                  <h3>Download Started!</h3>
+                  <h3>Thank You!</h3>
                   <p>
-                    Thank you, <strong>{brochureFormData.name}</strong>. Your brochure is downloading.
-                    Our team will reach out to you shortly.
+                    Thank you, <strong>{enquiryFormData.name}</strong>. Your enquiry has been received. Our team will contact you shortly.
                   </p>
-                  <button className="gpd-done-btn" onClick={closeBrochure}>CLOSE</button>
+                  <button className="gpd-done-btn" onClick={closeEnquiry}>CLOSE</button>
                 </div>
               )}
             </div>
 
-            {/* ── RIGHT: IMAGE ── */}
             <div className="gpd-image-col">
-              <img
-                src="form-1.png"
-                alt="GPD Project"
-              />
+              <img src="form-1.png" alt="GPD Project" />
             </div>
 
           </div>
@@ -492,7 +549,7 @@ export default function LocationAndGallerySection() {
       )}
 
       {/* ════════════════════════════════════════
-          COMPACT CENTERED MODAL — Book a Site Visit
+          SITE VISIT MODAL
       ════════════════════════════════════════ */}
       {visitOpen && (
         <div
@@ -501,14 +558,11 @@ export default function LocationAndGallerySection() {
         >
           <div className="gpd-modal-card" onClick={(e) => e.stopPropagation()}>
 
-            {/* ── CLOSE BUTTON ── */}
             <button className="gpd-close-btn" onClick={closeVisit} aria-label="Close">✕</button>
 
-            {/* ── LEFT: FORM ── */}
             <div className="gpd-form-col">
 
               {submitted ? (
-                /* ── SUCCESS ── */
                 <div className="gpd-success">
                   <div className="gpd-success-ring">✅</div>
                   <h3>Visit Confirmed!</h3>
@@ -517,7 +571,6 @@ export default function LocationAndGallerySection() {
                 </div>
               ) : (
                 <>
-                  {/* Tag + heading */}
                   <div className="gpd-tag-pill">
                     <div className="gpd-tag-dot" />
                     <span>Site Visit</span>
@@ -525,7 +578,6 @@ export default function LocationAndGallerySection() {
                   <h2 className="gpd-form-heading">Book Your Site Visit</h2>
                   <p className="gpd-form-sub">Our team will confirm your slot within 24 hours.</p>
 
-                  {/* STEP INDICATOR */}
                   <div className="gpd-steps-row">
                     {stepLabels.map((label, i) => {
                       const n = i + 1;
@@ -543,7 +595,7 @@ export default function LocationAndGallerySection() {
                     })}
                   </div>
 
-                  {/* ── STEP 1: Details ── */}
+                  {/* STEP 1 */}
                   {step === 1 && (
                     <div className="gpd-fields-block">
                       <div className="gpd-field-row">
@@ -589,7 +641,7 @@ export default function LocationAndGallerySection() {
                     </div>
                   )}
 
-                  {/* ── STEP 2: Project & Date ── */}
+                  {/* STEP 2 */}
                   {step === 2 && (
                     <div className="gpd-fields-block">
                       <div className="gpd-field-row full">
@@ -646,7 +698,7 @@ export default function LocationAndGallerySection() {
                     </div>
                   )}
 
-                  {/* ── STEP 3: Review & Confirm ── */}
+                  {/* STEP 3 */}
                   {step === 3 && (
                     <div className="gpd-fields-block">
                       <div className="gpd-summary-card">
@@ -691,7 +743,6 @@ export default function LocationAndGallerySection() {
               )}
             </div>
 
-            {/* ── RIGHT: IMAGE ONLY ── */}
             <div className="gpd-image-col">
               <img
                 src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=900&h=1200&fit=crop&q=80"
@@ -705,6 +756,21 @@ export default function LocationAndGallerySection() {
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap');
+
+        /* ── Root overflow fix ── */
+        .cta-banner-wrapper {
+          padding: 0 40px;
+          box-sizing: border-box;
+          width: 100%;
+          overflow: hidden;
+        }
+
+        /* HIDE MAP IMAGE ON MOBILE */
+        @media (max-width: 640px) {
+          .loc-banner-link {
+            display: none !important;
+          }
+        }
 
         /* ── TABLET (≤ 1024px) ── */
         @media (max-width: 1024px) {
@@ -728,9 +794,10 @@ export default function LocationAndGallerySection() {
 
         /* ── MOBILE (≤ 640px) ── */
         @media (max-width: 640px) {
+          .cta-banner-wrapper {
+            padding: 0 16px !important;
+          }
           .cta-banner {
-            margin: 0 16px 48px !important;
-            max-width: calc(100% - 32px) !important;
             border-radius: 12px 12px 0 0 !important;
           }
           .cta-inner {
@@ -754,7 +821,7 @@ export default function LocationAndGallerySection() {
             padding: 14px 20px !important;
             font-size: 12px !important;
           }
-          .brochure-btn {
+          .enquiry-btn {
             width: 100% !important;
             justify-content: center !important;
           }
@@ -762,9 +829,8 @@ export default function LocationAndGallerySection() {
 
         /* ── VERY SMALL (≤ 380px) ── */
         @media (max-width: 380px) {
-          .cta-banner {
-            margin: 0 10px 40px !important;
-            max-width: calc(100% - 20px) !important;
+          .cta-banner-wrapper {
+            padding: 0 10px !important;
           }
           .cta-inner {
             padding: 20px 16px !important;
@@ -772,8 +838,7 @@ export default function LocationAndGallerySection() {
         }
 
         /* ══════════════════════════════
-           COMPACT MODAL — Book a Site Visit
-           (matches Header / HeroSection modal styling)
+           COMPACT MODAL STYLES
         ══════════════════════════════ */
         .gpd-modal-backdrop {
           position: fixed; inset: 0; z-index: 1200;
@@ -1022,8 +1087,8 @@ export default function LocationAndGallerySection() {
         }
         .gpd-btn-confirm:hover { background: #0b7d4d; transform: translateY(-1px); }
 
-        .gpd-btn-brochure {
-          width: 100%; padding: 13px 20px; 
+        .gpd-btn-submit {
+          width: 100%; padding: 13px 20px;
           background: #e31e24;
           color: #fff; border: none; border-radius: 10px;
           font-family: 'Sora', sans-serif; font-size: 11.5px;
@@ -1032,11 +1097,11 @@ export default function LocationAndGallerySection() {
           justify-content: center; gap: 10px;
           transition: background .2s, transform .15s, opacity .2s;
         }
-        .gpd-btn-brochure:hover:not(:disabled) { 
+        .gpd-btn-submit:hover:not(:disabled) {
           background: #c01820;
-          transform: translateY(-1px); 
+          transform: translateY(-1px);
         }
-        .gpd-btn-brochure:disabled { opacity: 0.75; cursor: not-allowed; }
+        .gpd-btn-submit:disabled { opacity: 0.75; cursor: not-allowed; }
 
         .gpd-spinner {
           width: 14px; height: 14px; border-radius: 50%;

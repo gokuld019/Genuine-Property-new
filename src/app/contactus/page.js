@@ -1,5 +1,7 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import Link from "next/link";
+import { X } from "lucide-react";
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -7,6 +9,67 @@ export default function ContactPage() {
   });
   const [submitted, setSubmitted] = useState(false);
   const gsapLoaded = useRef(false);
+
+  // ── Brochure / Site Visit modal state ──
+  const [brochureOpen, setBrochureOpen] = useState(false);
+  const [brochurePhase, setBrochurePhase] = useState("idle");
+  const [brochureSubmitted, setBrochureSubmitted] = useState(false);
+  const [brochureLoading, setBrochureLoading] = useState(false);
+  const [brochureFormData, setBrochureFormData] = useState({
+    name: "", phone: "", email: "", city: "",
+  });
+  const brochureTimerRef = useRef(null);
+
+  const openBrochure = useCallback(() => {
+    setBrochureSubmitted(false);
+    setBrochureLoading(false);
+    setBrochureFormData({ name: "", phone: "", email: "", city: "" });
+    setBrochureOpen(true);
+    setBrochurePhase("idle");
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => setBrochurePhase("entering"));
+    });
+    clearTimeout(brochureTimerRef.current);
+    brochureTimerRef.current = setTimeout(() => setBrochurePhase("entered"), 380);
+  }, []);
+
+  const closeBrochure = useCallback(() => {
+    setBrochurePhase("leaving");
+    clearTimeout(brochureTimerRef.current);
+    brochureTimerRef.current = setTimeout(() => {
+      setBrochureOpen(false);
+      setBrochurePhase("idle");
+      setBrochureSubmitted(false);
+      setBrochureFormData({ name: "", phone: "", email: "", city: "" });
+      setBrochureLoading(false);
+    }, 280);
+  }, []);
+
+  const handleBrochureChange = (e) =>
+    setBrochureFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const handleBrochureSubmit = (e) => {
+    e.preventDefault();
+    setBrochureLoading(true);
+    setTimeout(() => {
+      setBrochureLoading(false);
+      setBrochureSubmitted(true);
+    }, 1400);
+  };
+
+  // ── Escape key ──
+  useEffect(() => {
+    if (!brochureOpen) return;
+    const fn = (e) => { if (e.key === "Escape") closeBrochure(); };
+    document.addEventListener("keydown", fn);
+    return () => document.removeEventListener("keydown", fn);
+  }, [brochureOpen, closeBrochure]);
+
+  // ── Body scroll lock ──
+  useEffect(() => {
+    document.body.style.overflow = brochureOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [brochureOpen]);
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
   const handleSubmit = (e) => { e.preventDefault(); setSubmitted(true); };
@@ -35,12 +98,7 @@ export default function ContactPage() {
 
     function revealWords(container, tl, offset = "0") {
       const inners = container.querySelectorAll(".gpd-word-inner");
-      tl.to(inners, {
-        y: 0,
-        duration: 0.75,
-        ease: "power3.out",
-        stagger: 0.1,
-      }, offset);
+      tl.to(inners, { y: 0, duration: 0.75, ease: "power3.out", stagger: 0.1 }, offset);
     }
 
     function initAnimations() {
@@ -48,99 +106,54 @@ export default function ContactPage() {
       const { ScrollTrigger } = window;
       gsap.registerPlugin(ScrollTrigger);
 
-      /* ──────────────────────────────────────────
-         HERO — staggered reveal sequence
-      ────────────────────────────────────────── */
       const heroAccentBar  = document.querySelector(".hero-accent-line");
       const heroEyebrowBar = document.querySelector(".hero-eyebrow-bar");
       const heroEyebrowTxt = document.querySelector(".hero-eyebrow-text");
       const heroH1         = document.querySelector(".hero h1");
       const heroSub        = document.querySelector(".hero-sub");
 
-      // Split h1 into word spans
       if (heroH1) {
-        splitIntoWordSpans(heroH1, ["Dream", "Journey"]);
-        // Apply accent colour via CSS class after split
-        heroH1.querySelectorAll(".gpd-accent").forEach(el => {
-          el.style.color = "var(--red-light)";
-        });
+        splitIntoWordSpans(heroH1, ["Right", "Conversation"]);
+        heroH1.querySelectorAll(".gpd-accent").forEach(el => { el.style.color = "var(--red-light)"; });
       }
 
-      // Set initial states
       gsap.set(heroAccentBar, { scaleY: 0, transformOrigin: "top center" });
       gsap.set(heroEyebrowBar, { scaleX: 0, transformOrigin: "left center" });
       gsap.set(heroEyebrowTxt, { opacity: 0, x: -16 });
       if (heroSub) gsap.set(heroSub, { opacity: 0, y: 18 });
 
       const heroTl = gsap.timeline({ delay: 0.15 });
-
-      // 1. Accent bar grows downward
-      heroTl.to(heroAccentBar, {
-        scaleY: 1, duration: 0.55, ease: "power3.out"
-      });
-
-      // 2. Eyebrow: line grows then text fades in
-      heroTl.to(heroEyebrowBar, {
-        scaleX: 1, duration: 0.4, ease: "power2.out"
-      }, "-=0.2");
-
-      heroTl.to(heroEyebrowTxt, {
-        opacity: 1, x: 0, duration: 0.4, ease: "power2.out"
-      }, "-=0.15");
-
-      // 3. H1 words clip-reveal upward
+      heroTl.to(heroAccentBar, { scaleY: 1, duration: 0.55, ease: "power3.out" });
+      heroTl.to(heroEyebrowBar, { scaleX: 1, duration: 0.4, ease: "power2.out" }, "-=0.2");
+      heroTl.to(heroEyebrowTxt, { opacity: 1, x: 0, duration: 0.4, ease: "power2.out" }, "-=0.15");
       if (heroH1) revealWords(heroH1, heroTl, "-=0.15");
+      if (heroSub) heroTl.to(heroSub, { opacity: 1, y: 0, duration: 0.6, ease: "power2.out" }, "-=0.3");
 
-      // 4. Subtitle fades up
-      if (heroSub) {
-        heroTl.to(heroSub, {
-          opacity: 1, y: 0, duration: 0.6, ease: "power2.out"
-        }, "-=0.3");
-      }
-
-      // Hero parallax grid
       gsap.to(".hero-grid-overlay", {
-        backgroundPositionY: "60px",
-        ease: "none",
-        scrollTrigger: {
-          trigger: ".hero", start: "top top", end: "bottom top", scrub: 1
-        }
+        backgroundPositionY: "60px", ease: "none",
+        scrollTrigger: { trigger: ".hero", start: "top top", end: "bottom top", scrub: 1 }
       });
 
-      /* ──────────────────────────────────────────
-         SECTION LABEL — slide in with bar
-      ────────────────────────────────────────── */
       gsap.utils.toArray(".section-label").forEach(el => {
         const bar = el.querySelector(".sl-bar");
         const txt = el.querySelector(".sl-text");
         if (!bar || !txt) return;
         gsap.set(bar, { scaleX: 0, transformOrigin: "left center" });
         gsap.set(txt, { opacity: 0, x: -14 });
-        const tl = gsap.timeline({
-          scrollTrigger: { trigger: el, start: "top 88%", toggleActions: "play none none none" }
-        });
+        const tl = gsap.timeline({ scrollTrigger: { trigger: el, start: "top 88%", toggleActions: "play none none none" } });
         tl.to(bar, { scaleX: 1, duration: 0.4, ease: "power2.out" })
           .to(txt, { opacity: 1, x: 0, duration: 0.35, ease: "power2.out" }, "-=0.1");
       });
 
-      /* ──────────────────────────────────────────
-         INFO COL H2 — word-clip reveal on scroll
-      ────────────────────────────────────────── */
+      // FIX: Updated to include "Perfect" and "Plot" as accent words
       const infoH2 = document.querySelector(".contact-info-col h2");
       if (infoH2) {
-        splitIntoWordSpans(infoH2, ["Help", "You"]);
-        infoH2.querySelectorAll(".gpd-accent").forEach(el => {
-          el.style.color = "var(--red)";
-        });
-        const tl = gsap.timeline({
-          scrollTrigger: { trigger: infoH2, start: "top 85%", toggleActions: "play none none none" }
-        });
+        splitIntoWordSpans(infoH2, ["Perfect", "Plot"]);
+        infoH2.querySelectorAll(".gpd-accent").forEach(el => { el.style.color = "#b82a2a"; });
+        const tl = gsap.timeline({ scrollTrigger: { trigger: infoH2, start: "top 85%", toggleActions: "play none none none" } });
         revealWords(infoH2, tl, "0");
       }
 
-      /* ──────────────────────────────────────────
-         CONTACT DESC — line-by-line fade up
-      ────────────────────────────────────────── */
       const desc = document.querySelector(".contact-desc");
       if (desc) {
         gsap.from(desc, {
@@ -149,31 +162,18 @@ export default function ContactPage() {
         });
       }
 
-      /* ──────────────────────────────────────────
-         CONTACT CARDS — stagger slide-up with border flash
-      ────────────────────────────────────────── */
       const cards = gsap.utils.toArray(".contact-card");
       gsap.set(cards, { opacity: 0, y: 48, x: -8 });
       gsap.to(cards, {
-        opacity: 1, y: 0, x: 0,
-        duration: 0.65, ease: "power3.out", stagger: 0.13,
+        opacity: 1, y: 0, x: 0, duration: 0.65, ease: "power3.out", stagger: 0.13,
         scrollTrigger: { trigger: ".contact-cards", start: "top 85%", toggleActions: "play none none none" },
         onComplete: () => {
-          // Flash border colour briefly on each card
           cards.forEach((card, i) => {
-            gsap.to(card, {
-              borderLeftColor: "#d63030",
-              duration: 0.2,
-              delay: i * 0.12,
-              yoyo: true,
-              repeat: 1,
-              ease: "none"
-            });
+            gsap.to(card, { borderLeftColor: "#d63030", duration: 0.2, delay: i * 0.12, yoyo: true, repeat: 1, ease: "none" });
           });
         }
       });
 
-      // Magnetic hover on cards
       cards.forEach(card => {
         card.addEventListener("mousemove", e => {
           const r = card.getBoundingClientRect();
@@ -186,27 +186,11 @@ export default function ContactPage() {
         });
       });
 
-      /* ──────────────────────────────────────────
-         HOURS BLOCK — reveal + row stagger
-      ────────────────────────────────────────── */
-      gsap.from(".hours-block", {
-        opacity: 0, y: 36, duration: 0.7, ease: "power2.out",
-        scrollTrigger: { trigger: ".hours-block", start: "top 88%", toggleActions: "play none none none" }
-      });
-      gsap.from(".hours-row", {
-        opacity: 0, x: -20, duration: 0.45, stagger: 0.1, ease: "power2.out",
-        scrollTrigger: { trigger: ".hours-block", start: "top 84%", toggleActions: "play none none none" }
-      });
+      gsap.from(".hours-block", { opacity: 0, y: 36, duration: 0.7, ease: "power2.out", scrollTrigger: { trigger: ".hours-block", start: "top 88%", toggleActions: "play none none none" } });
+      gsap.from(".hours-row", { opacity: 0, x: -20, duration: 0.45, stagger: 0.1, ease: "power2.out", scrollTrigger: { trigger: ".hours-block", start: "top 84%", toggleActions: "play none none none" } });
 
-      /* ──────────────────────────────────────────
-         FORM CARD — rise up with slight scale
-      ────────────────────────────────────────── */
-      gsap.from(".form-card", {
-        opacity: 0, y: 56, scale: 0.98, duration: 0.85, ease: "power3.out",
-        scrollTrigger: { trigger: ".form-card", start: "top 85%", toggleActions: "play none none none" }
-      });
+      gsap.from(".form-card", { opacity: 0, y: 56, scale: 0.98, duration: 0.85, ease: "power3.out", scrollTrigger: { trigger: ".form-card", start: "top 85%", toggleActions: "play none none none" } });
 
-      // Form header text
       const formH3 = document.querySelector(".form-header h3");
       if (formH3) {
         splitIntoWordSpans(formH3);
@@ -217,107 +201,37 @@ export default function ContactPage() {
         });
       }
 
-      // Form fields stagger
-      gsap.from(".form-group", {
-        opacity: 0, y: 22, duration: 0.5, stagger: 0.07, ease: "power2.out",
-        scrollTrigger: { trigger: ".form-grid", start: "top 83%", toggleActions: "play none none none" }
-      });
+      gsap.from(".form-group", { opacity: 0, y: 22, duration: 0.5, stagger: 0.07, ease: "power2.out", scrollTrigger: { trigger: ".form-grid", start: "top 83%", toggleActions: "play none none none" } });
 
-      /* ──────────────────────────────────────────
-         MAP SECTION
-      ────────────────────────────────────────── */
+      gsap.from(".map-info-panel", { opacity: 0, x: -52, duration: 0.85, ease: "power3.out", scrollTrigger: { trigger: ".map-section", start: "top 80%", toggleActions: "play none none none" } });
 
-      // Info panel slides in from left
-      gsap.from(".map-info-panel", {
-        opacity: 0, x: -52, duration: 0.85, ease: "power3.out",
-        scrollTrigger: { trigger: ".map-section", start: "top 80%", toggleActions: "play none none none" }
-      });
-
-      // Map panel heading word-reveal
       const mapH3 = document.querySelector(".map-info-panel h3");
       if (mapH3) {
         splitIntoWordSpans(mapH3);
         mapH3.querySelectorAll(".gpd-word-inner").forEach(el => { el.style.color = "#fff"; });
         gsap.set(mapH3.querySelectorAll(".gpd-word-inner"), { y: "110%" });
-        gsap.to(mapH3.querySelectorAll(".gpd-word-inner"), {
-          y: 0, duration: 0.65, ease: "power3.out", stagger: 0.1, delay: 0.2,
-          scrollTrigger: { trigger: ".map-section", start: "top 80%", toggleActions: "play none none none" }
-        });
+        gsap.to(mapH3.querySelectorAll(".gpd-word-inner"), { y: 0, duration: 0.65, ease: "power3.out", stagger: 0.1, delay: 0.2, scrollTrigger: { trigger: ".map-section", start: "top 80%", toggleActions: "play none none none" } });
       }
 
-      // Address items stagger from left
-      gsap.from(".map-address-item", {
-        opacity: 0, x: -24, duration: 0.5, stagger: 0.12, ease: "power2.out",
-        scrollTrigger: { trigger: ".map-info-panel", start: "top 78%", toggleActions: "play none none none" }
-      });
+      gsap.from(".map-address-item", { opacity: 0, x: -24, duration: 0.5, stagger: 0.12, ease: "power2.out", scrollTrigger: { trigger: ".map-info-panel", start: "top 78%", toggleActions: "play none none none" } });
+      gsap.from(".map-iframe-wrapper", { opacity: 0, scale: 0.97, duration: 0.85, ease: "power3.out", scrollTrigger: { trigger: ".map-iframe-wrapper", start: "top 80%", toggleActions: "play none none none" } });
 
-      // Map pin scale bounce in
-      gsap.from(".map-pin", {
-        opacity: 0, scale: 0.6, duration: 0.75, ease: "back.out(1.7)",
-        scrollTrigger: { trigger: ".map-placeholder", start: "top 80%", toggleActions: "play none none none" }
-      });
-
-      // Pin name — char-by-char typewriter
-      const pinName = document.querySelector(".map-pin-name");
-      if (pinName) {
-        const raw = pinName.textContent.trim();
-        pinName.innerHTML = raw.split("").map(ch =>
-          `<span style="display:inline-block;opacity:0;transform:translateY(8px)">${ch === " " ? "&nbsp;" : ch}</span>`
-        ).join("");
-        gsap.to(pinName.querySelectorAll("span"), {
-          opacity: 1, y: 0,
-          duration: 0.001,
-          stagger: 0.035,
-          ease: "none",
-          scrollTrigger: { trigger: ".map-pin", start: "top 80%", toggleActions: "play none none none" }
-        });
-      }
-
-      // Map pin label fade
-      gsap.from(".map-pin-label", {
-        opacity: 0, duration: 0.6, ease: "power1.out", delay: 0.9,
-        scrollTrigger: { trigger: ".map-pin", start: "top 80%", toggleActions: "play none none none" }
-      });
-
-      /* ──────────────────────────────────────────
-         VISIT CTA
-      ────────────────────────────────────────── */
+      // FIX: Updated CTA heading accent words
       const ctaH3 = document.querySelector(".visit-cta-left h3");
       if (ctaH3) {
-        splitIntoWordSpans(ctaH3, ["Just", "A", "Visit", "Away!"]);
-        ctaH3.querySelectorAll(".gpd-word-inner").forEach(el => {
-          el.style.color = "var(--text-dark)";
-        });
-        ctaH3.querySelectorAll(".gpd-word-outer .gpd-accent").forEach(el => {
-          el.style.fontWeight = "700";
-        });
-        const tl = gsap.timeline({
-          scrollTrigger: { trigger: ".visit-cta", start: "top 85%", toggleActions: "play none none none" }
-        });
+        splitIntoWordSpans(ctaH3, ["One", "Visit", "Away"]);
+        ctaH3.querySelectorAll(".gpd-accent").forEach(el => { el.style.color = "#b03030"; });
+        const tl = gsap.timeline({ scrollTrigger: { trigger: ".visit-cta", start: "top 85%", toggleActions: "play none none none" } });
         revealWords(ctaH3, tl, "0");
       }
 
-      // CTA subtitle
-      gsap.from(".visit-cta-left p", {
-        opacity: 0, y: 16, duration: 0.55, ease: "power2.out", delay: 0.45,
-        scrollTrigger: { trigger: ".visit-cta", start: "top 85%", toggleActions: "play none none none" }
-      });
+      gsap.from(".visit-cta-left p", { opacity: 0, y: 16, duration: 0.55, ease: "power2.out", delay: 0.45, scrollTrigger: { trigger: ".visit-cta", start: "top 85%", toggleActions: "play none none none" } });
+      gsap.from([".btn-outline", ".btn-primary"], { opacity: 0, y: 24, duration: 0.55, stagger: 0.12, ease: "power3.out", scrollTrigger: { trigger: ".visit-cta-right", start: "top 88%", toggleActions: "play none none none" } });
 
-      // CTA buttons stagger
-      gsap.from([".btn-outline", ".btn-primary"], {
-        opacity: 0, y: 24, duration: 0.55, stagger: 0.12, ease: "power3.out",
-        scrollTrigger: { trigger: ".visit-cta-right", start: "top 88%", toggleActions: "play none none none" }
-      });
-
-      // Button hover pulse
       [".btn-outline", ".btn-primary"].forEach(sel => {
         document.querySelectorAll(sel).forEach(btn => {
-          btn.addEventListener("mouseenter", () => {
-            gsap.to(btn, { scale: 1.03, duration: 0.2, ease: "power1.out" });
-          });
-          btn.addEventListener("mouseleave", () => {
-            gsap.to(btn, { scale: 1, duration: 0.25, ease: "elastic.out(1, 0.5)" });
-          });
+          btn.addEventListener("mouseenter", () => gsap.to(btn, { scale: 1.03, duration: 0.2, ease: "power1.out" }));
+          btn.addEventListener("mouseleave", () => gsap.to(btn, { scale: 1, duration: 0.25, ease: "elastic.out(1, 0.5)" }));
         });
       });
     }
@@ -348,19 +262,18 @@ export default function ContactPage() {
         body { font-family: var(--font-base); background: var(--warm-white); color: var(--text-dark); overflow-x: hidden; }
 
         /* ════ HERO ════ */
-        /* Banner image lives here. Swap the url() below for your own image
-           (hosted asset, CDN link, or uploaded file path) — nothing else
-           needs to change. The gradient layered on top of the image keeps
-           the eyebrow/heading/sub-text readable regardless of the photo. */
-        .hero {
-          position: relative; width: 100%; height: 560px;
-          background-image:
-            url('contactus.png');
-          background-size: cover;
-          background-position: center;
-          background-repeat: no-repeat;
-          display: flex; align-items: center; overflow: hidden;
-        }
+       .hero {
+  position: relative;
+  width: 100%;
+  height: 560px;
+  background-image: url("/contact.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
         .hero-grid-overlay {
           position: absolute; inset: 0;
           background-image:
@@ -368,49 +281,30 @@ export default function ContactPage() {
             linear-gradient(90deg, rgba(184,42,42,0.08) 1px, transparent 1px);
           background-size: 60px 60px;
         }
-        .hero-accent-line {
-          position: absolute; left: 0; top: 0; bottom: 0; width: 5px;
-          background: var(--red);
-        }
-        .hero-content {
-          position: relative; z-index: 2;
-          width: 100%; max-width: 1280px;
-          margin: 0 auto; padding: 0 80px;
-        }
+        .hero-accent-line { position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--red); }
+        .hero-content { position: relative; z-index: 2; width: 100%; max-width: 1280px; margin: 0 auto; padding: 0 80px; }
         .hero-eyebrow {
-          font-family: var(--font-base);
-          font-size: 11px; font-weight: 600;
-          letter-spacing: 0.2em; text-transform: uppercase;
-          color: var(--red-light); margin-bottom: 16px;
-          display: flex; align-items: center; gap: 12px;
+          font-family: var(--font-base); font-size: 11px; font-weight: 600;
+          letter-spacing: 0.2em; text-transform: uppercase; color: var(--red-light);
+          margin-bottom: 16px; display: flex; align-items: center; gap: 12px;
         }
-        .hero-eyebrow-bar {
-          display: block; width: 40px; height: 1px;
-          background: var(--red); flex-shrink: 0;
-        }
+        .hero-eyebrow-bar { display: block; width: 40px; height: 1px; background: var(--red); flex-shrink: 0; }
         .hero-eyebrow-text { display: block; }
         .hero h1 {
-          font-family: var(--font-base);
-          font-size: 64px; font-weight: 800;
+          font-family: var(--font-base); font-size: 64px; font-weight: 800;
           color: #fff; line-height: 1.05; letter-spacing: -0.01em;
-          perspective: 600px;
-          min-height: 1.2em;
+          perspective: 600px; min-height: 1.2em;
         }
         .hero-sub {
-          font-family: var(--font-base);
-          margin-top: 20px; font-size: 14px; font-weight: 300;
+          font-family: var(--font-base); margin-top: 20px; font-size: 14px; font-weight: 300;
           color: rgba(255,255,255,0.55); line-height: 1.7; max-width: 420px;
         }
-        .hero-deco {
-          position: absolute; right: 80px; top: 50%;
-          transform: translateY(-50%); opacity: 0.06; pointer-events: none;
-        }
+        .hero-deco { position: absolute; right: 80px; top: 50%; transform: translateY(-50%); opacity: 0.06; pointer-events: none; }
         .hero-deco svg { width: 300px; height: 300px; }
 
         /* ════ BREADCRUMB ════ */
         .breadcrumb {
-          font-family: var(--font-base);
-          padding: 14px 80px; font-size: 12px; color: var(--text-mid);
+          font-family: var(--font-base); padding: 14px 80px; font-size: 12px; color: var(--text-mid);
           border-bottom: 1px solid var(--border); background: #fff;
           display: flex; gap: 8px; align-items: center;
         }
@@ -420,308 +314,257 @@ export default function ContactPage() {
         .breadcrumb-current { color: var(--red); font-weight: 600; }
 
         /* ════ CONTACT GRID ════ */
-        .contact-section {
-          padding: 80px;
-          display: grid; grid-template-columns: 1fr 1.4fr;
-          gap: 60px; max-width: 1300px; margin: 0 auto;
-        }
+        .contact-section { padding: 80px; display: grid; grid-template-columns: 1fr 1.4fr; gap: 60px; max-width: 1300px; margin: 0 auto; }
 
         /* ════ LEFT ════ */
         .section-label {
-          font-family: var(--font-base);
-          font-size: 11px; font-weight: 600;
-          letter-spacing: 0.2em; text-transform: uppercase;
-          color: var(--red); margin-bottom: 12px;
-          display: flex; align-items: center; gap: 10px;
+          font-family: var(--font-base); font-size: 11px; font-weight: 600;
+          letter-spacing: 0.2em; text-transform: uppercase; color: var(--red);
+          margin-bottom: 12px; display: flex; align-items: center; gap: 10px;
         }
-        .sl-bar {
-          display: block; width: 30px; height: 1px;
-          background: var(--red); flex-shrink: 0;
-        }
+        .sl-bar { display: block; width: 30px; height: 1px; background: var(--red); flex-shrink: 0; }
         .sl-text { display: block; }
-
         .contact-info-col h2 {
-          font-family: var(--font-base);
-          font-size: 44px; font-weight: 800;
-          line-height: 1.2; color: var(--text-dark); margin-bottom: 16px;
-          min-height: 1.2em;
-          display: block;
+          font-family: var(--font-base); font-size: 44px; font-weight: 800;
+          line-height: 1.2; color: var(--text-dark); margin-bottom: 16px; min-height: 1.2em; display: block;
         }
-        .contact-desc {
-          font-family: var(--font-base);
-          font-size: 14px; font-weight: 300;
-          color: var(--text-mid); line-height: 1.8;
-          margin-bottom: 40px; max-width: 380px;
-        }
+        .contact-desc { font-family: var(--font-base); font-size: 14px; font-weight: 300; color: var(--text-mid); line-height: 1.8; margin-bottom: 40px; max-width: 380px; }
         .contact-cards { display: flex; flex-direction: column; gap: 16px; margin-bottom: 40px; }
         .contact-card {
-          display: flex; align-items: flex-start; gap: 18px;
-          padding: 22px 24px; background: #fff;
-          border: 1px solid var(--border); border-left: 4px solid var(--red);
+          display: flex; align-items: flex-start; gap: 18px; padding: 22px 24px;
+          background: #fff; border: 1px solid var(--border); border-left: 4px solid var(--red);
           border-radius: 6px; transition: box-shadow 0.2s; will-change: transform;
         }
         .contact-card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
-        .cc-icon {
-          width: 44px; height: 44px; min-width: 44px;
-          background: var(--off-white); border-radius: 8px;
-          display: flex; align-items: center; justify-content: center;
-        }
+        .cc-icon { width: 44px; height: 44px; min-width: 44px; background: var(--off-white); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
         .cc-icon svg { width: 22px; height: 22px; stroke: var(--red); fill: none; stroke-width: 1.8; }
-        .cc-label {
-          font-family: var(--font-base);
-          font-size: 10px; font-weight: 600;
-          letter-spacing: 0.15em; text-transform: uppercase;
-          color: var(--text-light); margin-bottom: 4px;
-        }
-        .cc-value {
-          font-family: var(--font-base);
-          font-size: 14px; font-weight: 500; color: var(--text-dark); line-height: 1.5;
-        }
+        .cc-label { font-family: var(--font-base); font-size: 10px; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-light); margin-bottom: 4px; }
+        .cc-value { font-family: var(--font-base); font-size: 14px; font-weight: 500; color: var(--text-dark); line-height: 1.5; }
         .cc-value a { color: var(--text-dark); text-decoration: none; }
         .cc-value a:hover { color: var(--red); }
         .hours-block { background: var(--charcoal); border-radius: 8px; padding: 24px 28px; color: #fff; }
-        .hours-title {
-          font-family: var(--font-base);
-          font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase;
-          color: rgba(255,255,255,0.5); margin-bottom: 16px;
-        }
-        .hours-row {
-          font-family: var(--font-base);
-          display: flex; justify-content: space-between;
-          font-size: 13px; color: rgba(255,255,255,0.85);
-          padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.08);
-        }
+        .hours-title { font-family: var(--font-base); font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 16px; }
+        .hours-row { font-family: var(--font-base); display: flex; justify-content: space-between; font-size: 13px; color: rgba(255,255,255,0.85); padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
         .hours-row:last-child { border-bottom: none; }
         .hours-row .day { font-weight: 300; }
         .hours-row .time { font-weight: 600; color: var(--red-light); }
 
         /* ════ RIGHT: Form ════ */
-        .form-card {
-          background: #fff; border: 1px solid var(--border);
-          border-radius: 12px; padding: 48px 44px;
-          box-shadow: 0 20px 60px rgba(0,0,0,0.06);
-          will-change: transform;
-        }
+        .form-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 48px 44px; box-shadow: 0 20px 60px rgba(0,0,0,0.06); will-change: transform; }
         .form-header { margin-bottom: 36px; }
-        .form-header h3 {
-          font-family: var(--font-base);
-          font-size: 30px; font-weight: 800;
-          color: var(--text-dark); margin-bottom: 6px;
-          min-height: 1.2em;
-          display: block;
-        }
-        .form-header p {
-          font-family: var(--font-base);
-          font-size: 13px; color: var(--text-mid); font-weight: 300;
-        }
+        .form-header h3 { font-family: var(--font-base); font-size: 30px; font-weight: 800; color: var(--text-dark); margin-bottom: 6px; min-height: 1.2em; display: block; }
+        .form-header p { font-family: var(--font-base); font-size: 13px; color: var(--text-mid); font-weight: 300; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .form-group { display: flex; flex-direction: column; gap: 8px; }
         .form-group.full { grid-column: 1 / -1; }
-        .form-group label {
-          font-family: var(--font-base);
-          font-size: 11px; font-weight: 600;
-          letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-mid);
-        }
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-          font-family: var(--font-base);
-          border: 1.5px solid var(--border); border-radius: 6px;
-          padding: 13px 16px; font-size: 13px;
-          color: var(--text-dark); background: var(--warm-white);
+        .form-group label { font-family: var(--font-base); font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-mid); }
+        .form-group input, .form-group select, .form-group textarea {
+          font-family: var(--font-base); border: 1.5px solid var(--border); border-radius: 6px;
+          padding: 13px 16px; font-size: 13px; color: var(--text-dark); background: var(--warm-white);
           outline: none; transition: border-color 0.2s, box-shadow 0.2s; width: 100%;
         }
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-          border-color: var(--red);
-          box-shadow: 0 0 0 3px rgba(184,42,42,0.08); background: #fff;
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+          border-color: var(--red); box-shadow: 0 0 0 3px rgba(184,42,42,0.08); background: #fff;
         }
         .form-group textarea { resize: none; height: 120px; }
         .form-group select { appearance: none; cursor: pointer; }
         .form-submit { margin-top: 28px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
         .btn-submit {
-          font-family: var(--font-base);
-          background: var(--red); color: #fff; border: none;
-          padding: 15px 36px; font-size: 13px; font-weight: 600;
-          letter-spacing: 0.08em; text-transform: uppercase;
-          cursor: pointer; border-radius: 6px;
-          transition: background 0.2s, transform 0.15s;
-          will-change: transform;
+          font-family: var(--font-base); background: var(--red); color: #fff; border: none;
+          padding: 15px 36px; font-size: 13px; font-weight: 600; letter-spacing: 0.08em;
+          text-transform: uppercase; cursor: pointer; border-radius: 6px;
+          transition: background 0.2s, transform 0.15s; will-change: transform;
         }
         .btn-submit:hover { background: var(--red-dark); transform: translateY(-1px); }
-        .form-note {
-          font-family: var(--font-base);
-          font-size: 11px; color: var(--text-light); line-height: 1.6;
-        }
+        .form-note { font-family: var(--font-base); font-size: 11px; color: var(--text-light); line-height: 1.6; }
         .success-msg { text-align: center; padding: 60px 20px; }
-        .success-icon {
-          width: 64px; height: 64px; background: rgba(184,42,42,0.08);
-          border-radius: 50%; display: flex; align-items: center; justify-content: center;
-          margin: 0 auto 20px;
-        }
+        .success-icon { width: 64px; height: 64px; background: rgba(184,42,42,0.08); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
         .success-icon svg { width: 30px; height: 30px; stroke: var(--red); fill: none; stroke-width: 2; }
-        .success-msg h4 {
-          font-family: var(--font-base);
-          font-size: 28px; font-weight: 800; color: var(--text-dark); margin-bottom: 10px;
-        }
-        .success-msg p {
-          font-family: var(--font-base);
-          font-size: 13px; color: var(--text-mid);
-        }
+        .success-msg h4 { font-family: var(--font-base); font-size: 28px; font-weight: 800; color: var(--text-dark); margin-bottom: 10px; }
+        .success-msg p { font-family: var(--font-base); font-size: 13px; color: var(--text-mid); }
 
         /* ════ MAP ════ */
         .map-section { background: var(--charcoal); position: relative; overflow: hidden; }
         .map-section-inner { display: grid; grid-template-columns: 360px 1fr; }
-        .map-info-panel {
-          background: var(--red); padding: 60px 48px;
-          display: flex; flex-direction: column; justify-content: center;
-          position: relative; z-index: 2;
-          will-change: transform;
-        }
-        .map-info-panel::after {
-          content: ''; position: absolute; right: -30px; top: 0; bottom: 0; width: 60px;
-          background: var(--red); clip-path: polygon(0 0, 0 100%, 100% 100%); z-index: 1;
-        }
-        .map-info-panel h3 {
-          font-family: var(--font-base);
-          font-size: 32px; font-weight: 800; color: #fff; margin-bottom: 8px;
-          min-height: 1.2em;
-        }
-        .map-info-panel p {
-          font-family: var(--font-base);
-          font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 32px; line-height: 1.7;
-        }
-        .map-address-item {
-          font-family: var(--font-base);
-          display: flex; align-items: flex-start; gap: 12px;
-          margin-bottom: 20px; color: rgba(255,255,255,0.9);
-        }
+        .map-info-panel { background: var(--red); padding: 60px 48px; display: flex; flex-direction: column; justify-content: center; position: relative; z-index: 2; will-change: transform; }
+        .map-info-panel::after { content: ''; position: absolute; right: -30px; top: 0; bottom: 0; width: 60px; background: var(--red); clip-path: polygon(0 0, 0 100%, 100% 100%); z-index: 1; }
+        .map-info-panel h3 { font-family: var(--font-base); font-size: 32px; font-weight: 800; color: #fff; margin-bottom: 8px; min-height: 1.2em; }
+        .map-info-panel p { font-family: var(--font-base); font-size: 13px; color: rgba(255,255,255,0.7); margin-bottom: 32px; line-height: 1.7; }
+        .map-address-item { font-family: var(--font-base); display: flex; align-items: flex-start; gap: 12px; margin-bottom: 20px; color: rgba(255,255,255,0.9); }
         .map-address-item svg { width: 18px; height: 18px; min-width: 18px; stroke: rgba(255,255,255,0.7); fill: none; stroke-width: 1.8; margin-top: 1px; }
         .map-address-item span { font-size: 13px; line-height: 1.6; }
-        .map-address-item strong {
-          display: block; font-size: 11px; font-weight: 600;
-          letter-spacing: 0.12em; text-transform: uppercase;
-          color: rgba(255,255,255,0.5); margin-bottom: 2px;
-        }
-        .map-placeholder {
-          height: 420px;
-          background: linear-gradient(160deg, #1e1e1e 0%, #111 100%);
-          display: flex; align-items: center; justify-content: center;
-          position: relative; overflow: hidden;
-        }
-        .map-grid {
-          position: absolute; inset: 0;
-          background-image:
-            linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
-          background-size: 40px 40px;
-        }
-        .map-pin { position: relative; z-index: 2; text-align: center; will-change: transform; }
-        .map-pin-icon {
-          width: 56px; height: 56px; background: var(--red);
-          border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
-          margin: 0 auto 16px; box-shadow: 0 8px 24px rgba(184,42,42,0.5);
-        }
-        .map-pin-name {
-          font-family: var(--font-base);
-          font-size: 22px; color: #fff; font-weight: 700;
-        }
-        .map-pin-label {
-          font-family: var(--font-base);
-          font-size: 13px; color: rgba(255,255,255,0.6); font-weight: 300; letter-spacing: 0.05em;
-        }
-        .open-map-btn {
-          margin-top: 16px; display: inline-block; padding: 10px 22px;
-          border: 1px solid rgba(255,255,255,0.25); color: rgba(255,255,255,0.7);
-          font-family: var(--font-base);
-          font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
-          text-decoration: none; border-radius: 4px; transition: background 0.2s, color 0.2s;
-        }
-        .open-map-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .map-address-item strong { display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 2px; }
+        .map-iframe-wrapper { position: relative; height: 100%; min-height: 420px; overflow: hidden; background: #1a1a1a; }
+        .map-iframe-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; }
+        .map-overlay-image { position: absolute; bottom: 24px; right: 24px; width: 60px; height: 60px; border-radius: 50%; background: var(--red); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 20px rgba(0,0,0,0.4); z-index: 3; font-family: var(--font-base); font-size: 24px; font-weight: 800; color: #fff; opacity: 0.9; pointer-events: none; }
+        .map-overlay-image img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
 
         /* ════ VISIT CTA ════ */
-        .visit-cta {
-          background: var(--off-white); border-top: 1px solid var(--border);
-          padding: 60px 80px;
-          display: flex; align-items: center; justify-content: space-between; gap: 40px;
-        }
-        .visit-cta-left h3 {
-          font-family: var(--font-base);
-          font-size: 36px; font-weight: 800; color: var(--text-dark); margin-bottom: 8px;
-          min-height: 1.2em;
-          display: block;
-        }
-        .visit-cta-left p {
-          font-family: var(--font-base);
-          font-size: 14px; color: var(--text-mid); font-weight: 300;
-        }
+        .visit-cta { background: var(--off-white); border-top: 1px solid var(--border); padding: 60px 80px; display: flex; align-items: center; justify-content: space-between; gap: 40px; }
+        .visit-cta-left h3 { font-family: var(--font-base); font-size: 36px; font-weight: 800; color: var(--text-dark); margin-bottom: 8px; min-height: 1.2em; display: block; }
+        .visit-cta-left p { font-family: var(--font-base); font-size: 14px; color: var(--text-mid); font-weight: 300; }
         .visit-cta-right { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
-        .btn-outline {
-          font-family: var(--font-base);
-          border: 1.5px solid var(--red); color: var(--red); background: none;
-          padding: 13px 28px; font-size: 12px; font-weight: 600;
-          letter-spacing: 0.08em; text-transform: uppercase;
-          cursor: pointer; border-radius: 4px; transition: background 0.2s, color 0.2s;
-          will-change: transform;
-        }
+        .btn-outline { font-family: var(--font-base); border: 1.5px solid var(--red); color: var(--red); background: none; padding: 13px 28px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; border-radius: 4px; transition: background 0.2s, color 0.2s; will-change: transform; }
         .btn-outline:hover { background: var(--red); color: #fff; }
-        .btn-primary {
-          font-family: var(--font-base);
-          background: var(--red); color: #fff; border: none;
-          padding: 13px 28px; font-size: 12px; font-weight: 600;
-          letter-spacing: 0.08em; text-transform: uppercase;
-          cursor: pointer; border-radius: 4px; transition: background 0.2s;
-          will-change: transform;
-        }
+        .btn-primary { font-family: var(--font-base); background: var(--red); color: #fff; border: none; padding: 13px 28px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; border-radius: 4px; transition: background 0.2s; will-change: transform; }
         .btn-primary:hover { background: var(--red-dark); }
 
-        /* Word-clip utility (set by JS) */
+        /* Word-clip utility */
         .gpd-word-outer { display: inline-block; overflow: hidden; vertical-align: bottom; margin-right: 0.25em; }
         .gpd-word-inner { display: inline-block; }
 
+        /* ════ MODAL ════ */
+        .gpd-modal-backdrop {
+          position: fixed; inset: 0; z-index: 1200;
+          background: rgba(8,8,10,0); backdrop-filter: blur(0px);
+          display: flex; align-items: center; justify-content: center; padding: 24px;
+          transition: background 0.32s ease, backdrop-filter 0.32s ease;
+        }
+        .gpd-modal-backdrop.entering,
+        .gpd-modal-backdrop.entered {
+          background: rgba(8,8,10,0.72); backdrop-filter: blur(6px);
+        }
+        .gpd-modal-backdrop.leaving {
+          background: rgba(8,8,10,0); backdrop-filter: blur(0px);
+          transition: background 0.22s ease, backdrop-filter 0.22s ease;
+        }
+        .gpd-modal-card {
+          width: 100%; max-width: 860px; max-height: 88vh;
+          background: #0d0d0d; border-radius: 22px;
+          border: 1px solid rgba(255,255,255,0.08);
+          box-shadow: 0 30px 90px rgba(0,0,0,0.6), 0 8px 28px rgba(0,0,0,0.4);
+          overflow: hidden; display: grid; grid-template-columns: 1.05fr 0.85fr;
+          position: relative; opacity: 0;
+          transform: translateY(18px) scale(0.97);
+          transition: opacity 0.32s cubic-bezier(0.22,1,0.36,1), transform 0.32s cubic-bezier(0.22,1,0.36,1);
+        }
+        .gpd-modal-backdrop.entering .gpd-modal-card,
+        .gpd-modal-backdrop.entered .gpd-modal-card { opacity: 1; transform: translateY(0) scale(1); }
+        .gpd-modal-backdrop.leaving .gpd-modal-card {
+          opacity: 0; transform: translateY(10px) scale(0.98);
+          transition: opacity 0.22s ease, transform 0.22s ease;
+        }
+        .gpd-close-btn {
+          position: absolute; top: 16px; right: 16px; z-index: 10;
+          width: 32px; height: 32px; border-radius: 50%;
+          background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14);
+          color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
+          transition: background 0.2s, transform 0.25s;
+        }
+        .gpd-close-btn:hover { background: rgba(255,255,255,0.16); transform: rotate(90deg); }
+        .gpd-form-col {
+          padding: 36px 38px; overflow-y: auto; display: flex; flex-direction: column;
+          background: #0d0d0d; max-height: 88vh;
+        }
+        .gpd-form-col::-webkit-scrollbar { width: 5px; }
+        .gpd-form-col::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 10px; }
+        .gpd-tag-pill {
+          display: inline-flex; align-items: center; gap: 7px;
+          background: rgba(184,42,42,0.1); border: 1px solid rgba(184,42,42,0.25);
+          border-radius: 100px; padding: 5px 14px 5px 10px; width: fit-content; margin-bottom: 16px;
+        }
+        .gpd-tag-dot {
+          width: 6px; height: 6px; border-radius: 50%; background: #b82a2a;
+          animation: pulsedot 1.8s ease-in-out infinite;
+        }
+        @keyframes pulsedot { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.4; transform:scale(1.5); } }
+        .gpd-tag-pill span { font-size: 10px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: #b82a2a; font-family: 'Sora', sans-serif; }
+        .gpd-form-heading { font-family: 'Sora', sans-serif; font-size: clamp(24px,2.6vw,32px); font-weight: 700; color: #fff; line-height: 1.1; letter-spacing: -0.4px; margin: 0 0 6px; }
+        .gpd-form-sub { font-family: 'Sora', sans-serif; font-size: 12.5px; color: rgba(255,255,255,0.35); line-height: 1.7; font-weight: 300; margin: 0 0 26px; }
+        .gpd-fields-block { display: flex; flex-direction: column; gap: 14px; }
+        .gpd-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .gpd-field { display: flex; flex-direction: column; gap: 6px; }
+        .gpd-field label { font-size: 9.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,0.3); font-family: 'Sora', sans-serif; }
+        .gpd-input-wrap { position: relative; }
+        .gpd-input-icon { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.2); pointer-events: none; display: flex; align-items: center; }
+        .gpd-f {
+          width: 100%; padding: 11px 14px 11px 38px;
+          background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+          border-radius: 10px; font-family: 'Sora', sans-serif; font-size: 12.5px;
+          color: #fff; outline: none; box-sizing: border-box; transition: border-color .2s, background .2s;
+        }
+        .gpd-f::placeholder { color: rgba(255,255,255,0.18); }
+        .gpd-f:focus { border-color: rgba(184,42,42,0.5); background: rgba(184,42,42,0.04); }
+        .gpd-btn-brochure {
+          width: 100%; padding: 13px 20px; background: #b82a2a; color: #fff; border: none;
+          border-radius: 10px; font-family: 'Sora', sans-serif; font-size: 11.5px;
+          font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase; cursor: pointer;
+          display: flex; align-items: center; justify-content: center; gap: 10px;
+          transition: background .2s, transform .15s, opacity .2s;
+        }
+        .gpd-btn-brochure:hover:not(:disabled) { background: #8f1f1f; transform: translateY(-1px); }
+        .gpd-btn-brochure:disabled { opacity: 0.75; cursor: not-allowed; }
+        .gpd-spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; animation: gpdSpin 0.7s linear infinite; flex-shrink: 0; }
+        @keyframes gpdSpin { to { transform: rotate(360deg); } }
+        .gpd-privacy { font-size: 9.5px; color: rgba(255,255,255,0.18); text-align: center; margin-top: 10px; font-family: 'Sora', sans-serif; }
+        .gpd-success { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 12px; padding: 20px; min-height: 320px; }
+        .gpd-success-ring { width: 60px; height: 60px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03); display: flex; align-items: center; justify-content: center; font-size: 26px; margin-bottom: 6px; }
+        .gpd-success h3 { font-family: 'Sora', sans-serif; font-size: 26px; font-weight: 700; color: #fff; margin: 0; }
+        .gpd-success p { font-family: 'Sora', sans-serif; font-size: 12.5px; color: rgba(255,255,255,0.35); line-height: 1.8; max-width: 280px; margin: 0; }
+        .gpd-success p strong { color: rgba(255,255,255,0.75); font-weight: 600; }
+        .gpd-done-btn { margin-top: 8px; padding: 10px 30px; background: transparent; color: rgba(255,255,255,0.55); border: 1px solid rgba(255,255,255,0.14); border-radius: 10px; font-family: 'Sora', sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; cursor: pointer; transition: border-color .2s, color .2s; }
+        .gpd-done-btn:hover { border-color: #b82a2a; color: #fff; }
+        .gpd-image-col { position: relative; overflow: hidden; max-height: 88vh; }
+        .gpd-image-col img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .gpd-image-col::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.15) 100%); pointer-events: none; }
+
         /* ════ RESPONSIVE ════ */
+        @media (max-width: 768px) {
+          .gpd-modal-card { grid-template-columns: 1fr !important; max-width: 480px; }
+          .gpd-image-col { display: none !important; }
+          .gpd-form-col { padding: 30px 26px !important; }
+           .hero {
+    height: 760px;
+    background-image: url("/img-51.jpg");
+    background-position: center top;
+    background-size: cover;
+  }
+        }
+        @media (max-width: 640px) {
+          .gpd-modal-backdrop { padding: 0 !important; align-items: flex-end !important; }
+          .gpd-modal-card { max-width: 100% !important; width: 100%; max-height: 92dvh !important; border-radius: 20px 20px 0 0 !important; transform: translateY(100%) !important; }
+          .gpd-modal-backdrop.entering .gpd-modal-card,
+          .gpd-modal-backdrop.entered .gpd-modal-card { transform: translateY(0) !important; }
+          .gpd-modal-backdrop.leaving .gpd-modal-card { transform: translateY(100%) !important; }
+          .gpd-form-col { max-height: 92dvh !important; padding: 26px 18px !important; }
+          .gpd-field-row { grid-template-columns: 1fr !important; }
+        }
         @media (max-width: 1279px) {
-          .hero-content { padding: 0 48px; }
-          .hero-deco { right: 48px; }
+          .hero-content { padding: 0 48px; } .hero-deco { right: 48px; }
           .breadcrumb { padding: 14px 48px; }
           .contact-section { padding: 64px 48px; gap: 48px; }
           .visit-cta { padding: 52px 48px; }
         }
         @media (max-width: 1023px) {
-          .hero { height: 360px; }
-          .hero h1 { font-size: 48px; }
-          .hero-content { padding: 0 32px; }
-          .hero-deco { display: none; }
+          .hero { height: 360px; } .hero h1 { font-size: 48px; }
+          .hero-content { padding: 0 32px; } .hero-deco { display: none; }
           .breadcrumb { padding: 12px 32px; }
           .contact-section { grid-template-columns: 1fr; padding: 52px 32px; gap: 40px; }
           .contact-desc { max-width: 100%; }
           .map-section-inner { grid-template-columns: 1fr; }
-          .map-info-panel { padding: 48px 32px; }
-          .map-info-panel::after { display: none; }
-          .map-placeholder { height: 320px; }
+          .map-info-panel { padding: 48px 32px; } .map-info-panel::after { display: none; }
+          .map-iframe-wrapper { min-height: 320px; }
           .visit-cta { padding: 48px 32px; }
         }
         @media (max-width: 899px) {
-          .hero { height: 320px; }
-          .hero h1 { font-size: 40px; }
-          .hero-content { padding: 0 24px; }
-          .hero-sub { font-size: 13px; }
+          .hero { height: 320px; } .hero h1 { font-size: 40px; }
+          .hero-content { padding: 0 24px; } .hero-sub { font-size: 13px; }
           .breadcrumb { padding: 12px 24px; }
           .contact-section { padding: 40px 24px; gap: 36px; }
           .contact-info-col h2 { font-size: 36px; }
-          .form-card { padding: 36px 28px; }
-          .form-header h3 { font-size: 26px; }
-          .map-info-panel { padding: 40px 24px; }
-          .map-placeholder { height: 280px; }
-          .map-pin-name { font-size: 18px; }
+          .form-card { padding: 36px 28px; } .form-header h3 { font-size: 26px; }
+          .map-info-panel { padding: 40px 24px; } .map-iframe-wrapper { min-height: 280px; }
           .visit-cta { flex-direction: column; align-items: flex-start; padding: 40px 24px; }
           .visit-cta-right { width: 100%; }
           .btn-outline, .btn-primary { flex: 1; text-align: center; }
         }
-        @media (max-width: 599px) {
-          .hero { height: 280px; }
+
+        @media (max-width: 768px) {
+          .hero { height: 760px; }
           .hero h1 { font-size: 32px; }
+        }
+
+        @media (max-width: 599px) {
           .hero-eyebrow { font-size: 10px; }
           .hero-sub { font-size: 12px; max-width: 100%; margin-top: 14px; }
           .breadcrumb { padding: 10px 16px; font-size: 11px; }
@@ -729,65 +572,42 @@ export default function ContactPage() {
           .contact-info-col h2 { font-size: 30px; }
           .contact-desc { font-size: 13px; margin-bottom: 28px; }
           .contact-card { padding: 16px 18px; gap: 14px; }
-          .cc-icon { width: 38px; height: 38px; min-width: 38px; }
-          .cc-value { font-size: 13px; }
+          .cc-icon { width: 38px; height: 38px; min-width: 38px; } .cc-value { font-size: 13px; }
           .hours-block { padding: 20px 20px; }
-          .form-card { padding: 28px 20px; }
-          .form-grid { grid-template-columns: 1fr; }
+          .form-card { padding: 28px 20px; } .form-grid { grid-template-columns: 1fr; }
           .form-header h3 { font-size: 24px; }
           .form-submit { flex-direction: column; align-items: flex-start; }
           .btn-submit { width: 100%; text-align: center; }
-          .map-info-panel { padding: 32px 16px; }
-          .map-info-panel h3 { font-size: 26px; }
-          .map-placeholder { height: 240px; }
+          .map-info-panel { padding: 32px 16px; } .map-info-panel h3 { font-size: 26px; }
+          .map-iframe-wrapper { min-height: 240px; }
           .visit-cta { padding: 32px 16px; gap: 24px; }
           .visit-cta-left h3 { font-size: 28px; }
           .visit-cta-right { flex-direction: column; gap: 12px; }
           .btn-outline, .btn-primary { width: 100%; text-align: center; padding: 13px 20px; }
+          .map-overlay-image { width: 44px; height: 44px; bottom: 16px; right: 16px; font-size: 18px; }
+          .map-overlay-image img { width: 28px; height: 28px; }
         }
         @media (max-width: 479px) {
-          .hero { height: 240px; }
-          .hero h1 { font-size: 26px; }
-          .hero-sub { font-size: 12px; margin-top: 12px; }
-          .hero-accent-line { width: 3px; }
+          .hero-sub { font-size: 12px; margin-top: 12px; } .hero-accent-line { width: 3px; }
           .contact-info-col h2 { font-size: 26px; }
-          .form-card { padding: 20px 16px; }
-          .form-header h3 { font-size: 22px; }
+          .form-card { padding: 20px 16px; } .form-header h3 { font-size: 22px; }
           .form-group input, .form-group select, .form-group textarea { padding: 11px 13px; font-size: 13px; }
-          .map-placeholder { height: 210px; }
-          .map-pin-name { font-size: 16px; }
-          .visit-cta-left h3 { font-size: 24px; }
-          .section-label { font-size: 10px; }
+          .map-iframe-wrapper { min-height: 210px; }
+          .visit-cta-left h3 { font-size: 24px; } .section-label { font-size: 10px; }
         }
         @media (max-width: 359px) {
-          .hero { height: 210px; }
-          .hero h1 { font-size: 22px; }
-          .hero-content { padding: 0 12px; }
-          .breadcrumb { padding: 10px 12px; }
-          .contact-section { padding: 24px 12px; }
-          .visit-cta { padding: 24px 12px; }
-          .form-card { padding: 16px 12px; }
-          .map-info-panel { padding: 24px 12px; }
+          .hero-content { padding: 0 12px; } .breadcrumb { padding: 10px 12px; }
+          .contact-section { padding: 24px 12px; } .visit-cta { padding: 24px 12px; }
+          .form-card { padding: 16px 12px; } .map-info-panel { padding: 24px 12px; }
+          .map-iframe-wrapper { min-height: 180px; }
         }
-        @media (prefers-reduced-motion: reduce) {
-          * { animation: none !important; transition: none !important; }
-        }
+        @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
       `}</style>
 
       {/* ── HERO ── */}
       <section className="hero">
         <div className="hero-grid-overlay" />
         <div className="hero-accent-line" />
-        {/* <div className="hero-content">
-          <div className="hero-eyebrow">
-            <span className="hero-eyebrow-bar" />
-            <span className="hero-eyebrow-text">Get In Touch</span>
-          </div>
-          <h1>Let&apos;s Start Your Dream Journey</h1>
-          <p className="hero-sub">
-            Our expert team is ready to guide you toward the perfect plot. Reach out — your future begins with a conversation.
-          </p>
-        </div> */}
         <div className="hero-deco" aria-hidden="true">
           <svg viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
             <circle cx="150" cy="150" r="120" stroke="white" strokeWidth="1" />
@@ -797,29 +617,30 @@ export default function ContactPage() {
             <line x1="150" y1="30" x2="150" y2="270" stroke="white" strokeWidth="1" />
           </svg>
         </div>
+        <div className="hero-content" />
       </section>
 
       {/* ── BREADCRUMB ── */}
       <div className="breadcrumb">
-        <a href="/">Home</a>
+        <Link href="/">Home</Link>
         <span className="breadcrumb-sep">›</span>
         <span className="breadcrumb-current">Contact Us</span>
       </div>
 
       {/* ── MAIN CONTACT ── */}
       <section className="contact-section">
-
         {/* LEFT */}
         <div className="contact-info-col">
           <div className="section-label">
             <span className="sl-bar" />
             <span className="sl-text">Contact Information</span>
           </div>
-          <h2>We&apos;re Here To Help You</h2>
+          <h2>
+            Let's Find Your Perfect Plot
+          </h2>          
           <p className="contact-desc">
-            Whether you're exploring plots, seeking investment advice, or ready to secure your dream property — our team is available every step of the way.
+            Whether you're exploring plots, seeking investment advice, or ready to secure your dream property, our team is here to guide you throughout.
           </p>
-
           <div className="contact-cards">
             <div className="contact-card">
               <div className="cc-icon">
@@ -827,13 +648,9 @@ export default function ContactPage() {
               </div>
               <div>
                 <div className="cc-label">Phone</div>
-                <div className="cc-value">
-                  <a href="tel:+971501234567">+91 93639 39696</a><br />
-                  {/* <a href="tel:+97141234567">+971 4 123 4567</a> */}
-                </div>
+                <div className="cc-value"><a href="tel:+919363939696">+91 93639 39696</a></div>
               </div>
             </div>
-
             <div className="contact-card">
               <div className="cc-icon">
                 <svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" strokeLinecap="round" strokeLinejoin="round"/><polyline points="22,6 12,13 2,6" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -841,27 +658,26 @@ export default function ContactPage() {
               <div>
                 <div className="cc-label">Email</div>
                 <div className="cc-value">
-                  <a href="mailto:info@genuineproperties.ae">info@genuineproperties.com</a><br />
-                  <a href="mailto:sales@genuineproperties.ae">sales@genuineproperties.com</a>
+                  <a href="mailto:info@genuineproperties.com">info@genuineproperties.com</a><br />
+                  <a href="mailto:sales@genuineproperties.com">sales@genuineproperties.com</a>
                 </div>
               </div>
             </div>
-
             <div className="contact-card">
               <div className="cc-icon">
                 <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="10" r="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
               </div>
               <div>
                 <div className="cc-label">Office Address</div>
-<div className="cc-value">
-  Genuine Property Developers,<br />
-  7/37 Kakkan Street,<br />
-  West Tambaram,<br />
-  Chennai - 600045
-</div>              </div>
+                <div className="cc-value">
+                  Genuine Property Developers,<br />
+                  7/37 Kakkan Street,<br />
+                  West Tambaram,<br />
+                  Chennai - 600045
+                </div>
+              </div>
             </div>
           </div>
-
           <div className="hours-block">
             <div className="hours-title">Office Hours</div>
             <div className="hours-row"><span className="day">Monday – Friday</span><span className="time">9:00 AM – 7:00 PM</span></div>
@@ -898,10 +714,10 @@ export default function ContactPage() {
                   </div>
                   <div className="form-group">
                     <label>Phone Number</label>
-                    <input type="tel" name="phone" placeholder="+971 50 000 0000" value={formData.phone} onChange={handleChange} />
+                    <input type="tel" name="phone" placeholder="+91 98765 43210" value={formData.phone} onChange={handleChange} />
                   </div>
                   <div className="form-group">
-                    <label>I&apos;m Interested In</label>
+                    <label>I'm Interested In</label>
                     <select name="interest" value={formData.interest} onChange={handleChange}>
                       <option value="">Select Plot Type</option>
                       <option>Residential Plots</option>
@@ -932,52 +748,144 @@ export default function ContactPage() {
         <div className="map-section-inner">
           <div className="map-info-panel">
             <h3>Find Us Here</h3>
-            <p>Strategically located in the heart of Business Bay, easily accessible from all major routes.</p>
+            <p>Easily accessible from all major routes, come in and let us show you around.</p>
             <div className="map-address-item">
               <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="10" r="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
-<span>
-  <strong>Head Office</strong>
-  Genuine Property Developers, 7/37 Kakkan Street, West Tambaram, Chennai - 600045
-</span>            </div>
-            <div className="map-address-item">
-          </div>
+              <span><strong>Head Office</strong>Genuine Property Developers, 7/37 Kakkan Street, West Tambaram, Chennai - 600045</span>
+            </div>
             <div className="map-address-item">
               <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92v2z" strokeLinecap="round" strokeLinejoin="round"/></svg>
               <span><strong>Hotline</strong>+91 93639 39696</span>
             </div>
           </div>
-         <div className="map-placeholder">
-  <div className="map-grid" />
-  <div className="map-pin">
-    <div className="map-pin-icon" />
-    <div className="map-pin-name">Genuine Property Developers</div>
-    <div className="map-pin-label">
-      7/37 Kakkan Street, West Tambaram, Chennai - 600045
-    </div>
-    <a
-      href="https://maps.google.com/?q=7/37+Kakkan+Street+West+Tambaram+Chennai+600045"
-      target="_blank"
-      rel="noopener noreferrer"
-      className="open-map-btn"
-    >
-      Open in Google Maps →
-    </a>
-  </div>
-</div>
+          <div className="map-iframe-wrapper">
+            <iframe
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d4784.952572085464!2d80.10915817585672!3d12.925493515885908!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a525fe182aa9ae7%3A0xbb72c6da3359212d!2sGENUINE%20PROPERTY%20DEVELOPERS!5e1!3m2!1sen!2sin!4v1782106795619!5m2!1sen!2sin"
+              allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade"
+              title="Genuine Property Developers Location Map"
+            />
+          </div>
         </div>
       </section>
 
       {/* ── VISIT CTA ── */}
       <section className="visit-cta">
         <div className="visit-cta-left">
-          <h3>Your Dream Plot is Just A Visit Away!</h3>
+          <h3>Your Dream Plot Is One Visit Away From Becoming Real.</h3>
           <p>Book a free site visit and experience the Genuine difference in person.</p>
         </div>
         <div className="visit-cta-right">
-          <button className="btn-outline">Download Brochure</button>
-          <button className="btn-primary">Book A Free Site Visit →</button>
+          <button className="btn-primary" onClick={openBrochure}>
+            Book A Free Site Visit →
+          </button>
         </div>
       </section>
+
+      {/* ════════════════════════════════════════
+          SITE VISIT MODAL
+      ════════════════════════════════════════ */}
+      {brochureOpen && (
+        <div
+          className={`gpd-modal-backdrop${brochurePhase !== "idle" ? ` ${brochurePhase}` : ""}`}
+          onClick={closeBrochure}
+        >
+          <div className="gpd-modal-card" onClick={(e) => e.stopPropagation()}>
+            <button className="gpd-close-btn" onClick={closeBrochure} aria-label="Close">
+              <X size={15} />
+            </button>
+
+            {/* ── LEFT: FORM ── */}
+            <div className="gpd-form-col">
+              {!brochureSubmitted ? (
+                <>
+                  <div className="gpd-tag-pill">
+                    <div className="gpd-tag-dot" />
+                    <span>Site Visit</span>
+                  </div>
+                  <h2 className="gpd-form-heading">Book Your Site Visit</h2>
+                  <p className="gpd-form-sub">Share a few details and we'll confirm your slot within 24 hours.</p>
+
+                  <form onSubmit={handleBrochureSubmit} className="gpd-fields-block">
+                    <div className="gpd-field-row">
+                      <div className="gpd-field">
+                        <label>Full Name <span style={{ color: "#b82a2a" }}>*</span></label>
+                        <div className="gpd-input-wrap">
+                          <span className="gpd-input-icon">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                          </span>
+                          <input className="gpd-f" type="text" name="name" required
+                            placeholder="Your name" value={brochureFormData.name} onChange={handleBrochureChange} />
+                        </div>
+                      </div>
+                      <div className="gpd-field">
+                        <label>Phone <span style={{ color: "#b82a2a" }}>*</span></label>
+                        <div className="gpd-input-wrap">
+                          <span className="gpd-input-icon">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.34 2 2 0 0 1 3.59 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.56a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                          </span>
+                          <input className="gpd-f" type="tel" name="phone" required
+                            placeholder="+91 XXXXX XXXXX" value={brochureFormData.phone} onChange={handleBrochureChange} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="gpd-field-row">
+                      <div className="gpd-field">
+                        <label>Email</label>
+                        <div className="gpd-input-wrap">
+                          <span className="gpd-input-icon">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                          </span>
+                          <input className="gpd-f" type="email" name="email"
+                            placeholder="you@email.com" value={brochureFormData.email} onChange={handleBrochureChange} />
+                        </div>
+                      </div>
+                      <div className="gpd-field">
+                        <label>City</label>
+                        <div className="gpd-input-wrap">
+                          <span className="gpd-input-icon">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                          </span>
+                          <input className="gpd-f" type="text" name="city"
+                            placeholder="Chennai, Bangalore…" value={brochureFormData.city} onChange={handleBrochureChange} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <button type="submit" className="gpd-btn-brochure" disabled={brochureLoading} style={{ marginTop: "10px" }}>
+                      {brochureLoading ? (
+                        <><span className="gpd-spinner" />Booking Your Visit…</>
+                      ) : (
+                        <>
+                          Book Site Visit
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                          </svg>
+                        </>
+                      )}
+                    </button>
+                    <p className="gpd-privacy">🔒 Your information is safe with us. No spam, ever.</p>
+                  </form>
+                </>
+              ) : (
+                <div className="gpd-success">
+                  <div className="gpd-success-ring">✅</div>
+                  <h3>Visit Confirmed!</h3>
+                  <p>
+                    Thank you, <strong>{brochureFormData.name}</strong>. Our team will reach out within <strong>24 hours</strong> to confirm your slot. We look forward to meeting you.
+                  </p>
+                  <button className="gpd-done-btn" onClick={closeBrochure}>CLOSE</button>
+                </div>
+              )}
+            </div>
+
+            {/* ── RIGHT: IMAGE ── */}
+            <div className="gpd-image-col">
+              <img src="/form-1.png" alt="GPD Site Visit" />
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

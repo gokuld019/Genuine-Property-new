@@ -2,6 +2,9 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { X } from "lucide-react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import Image from "next/image";
 
 const PROJECTS = [
   {
@@ -40,37 +43,50 @@ const TIME_SLOTS = [
   { label: "4:00 PM – 6:00 PM",  icon: "🌇" },
 ];
 
+const API_URL = "https://genuinepropertydevelopers.com/backend/send_details.php";
+
 export default function Header() {
-  const [scrolled, setScrolled]                     = useState(false);
-  const [dropdownOpen, setDropdownOpen]             = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen]         = useState(false);
+  const pathname = usePathname();
+  const [scrolled, setScrolled] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileProjectsOpen, setMobileProjectsOpen] = useState(false);
 
-  // Site Visit modal states
-  const [visitOpen, setVisitOpen]   = useState(false);
-  const [visitPhase, setVisitPhase] = useState("idle"); // idle | entering | entered | leaving
-
-  // Brochure modal states
-  const [brochureOpen, setBrochureOpen]   = useState(false);
-  const [brochurePhase, setBrochurePhase] = useState("idle");
-  const [brochureSubmitted, setBrochureSubmitted] = useState(false);
-  const [brochureLoading, setBrochureLoading] = useState(false);
-  const [brochureFormData, setBrochureFormData] = useState({
+  // Enquiry modal states (previously brochure)
+  const [enquiryOpen, setEnquiryOpen] = useState(false);
+  const [enquiryPhase, setEnquiryPhase] = useState("idle");
+  const [enquirySubmitted, setEnquirySubmitted] = useState(false);
+  const [enquiryLoading, setEnquiryLoading] = useState(false);
+  const [enquiryFormData, setEnquiryFormData] = useState({
     name: "", phone: "", email: "", city: ""
   });
 
+  // Site Visit modal states
+  const [visitOpen, setVisitOpen] = useState(false);
+  const [visitPhase, setVisitPhase] = useState("idle");
+
   // Site Visit form states
-  const [step, setStep]               = useState(1);
-  const [submitted, setSubmitted]     = useState(false);
+  const [step, setStep] = useState(1);
+  const [submitted, setSubmitted] = useState(false);
+  const [visitLoading, setVisitLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState("");
-  const [formData, setFormData]       = useState({
+  const [formData, setFormData] = useState({
     name: "", phone: "", email: "",
     project: "", date: "", message: "",
   });
 
   const dropdownRef = useRef(null);
-  const timerRef    = useRef(null);
-  const brochureTimerRef = useRef(null);
+  const timerRef = useRef(null);
+  const enquiryTimerRef = useRef(null);
+  const dropdownCloseTimerRef = useRef(null);
+
+  // Check if link is active
+  const isActive = (href) => {
+    if (href === "/") {
+      return pathname === "/";
+    }
+    return pathname?.startsWith(href);
+  };
 
   /* ── scroll ── */
   useEffect(() => {
@@ -91,29 +107,63 @@ export default function Header() {
 
   /* ── body scroll lock ── */
   useEffect(() => {
-    document.body.style.overflow = (visitOpen || mobileMenuOpen || brochureOpen) ? "hidden" : "";
+    document.body.style.overflow = (visitOpen || mobileMenuOpen || enquiryOpen) ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
-  }, [visitOpen, mobileMenuOpen, brochureOpen]);
+  }, [visitOpen, mobileMenuOpen, enquiryOpen]);
 
   /* ── escape key closes modals ── */
   useEffect(() => {
-    if (!visitOpen && !brochureOpen) return;
+    if (!visitOpen && !enquiryOpen) return;
     const fn = (e) => {
       if (e.key === "Escape") {
-        if (brochureOpen) closeBrochure();
+        if (enquiryOpen) closeEnquiry();
         if (visitOpen) closeVisit();
       }
     };
     document.addEventListener("keydown", fn);
     return () => document.removeEventListener("keydown", fn);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visitOpen, brochureOpen]);
+  }, [visitOpen, enquiryOpen]);
+
+  /* ── hover open/close for Projects dropdown (with small close delay) ── */
+  const openDropdownOnHover = useCallback(() => {
+    clearTimeout(dropdownCloseTimerRef.current);
+    setDropdownOpen(true);
+  }, []);
+
+  const closeDropdownOnHover = useCallback(() => {
+    clearTimeout(dropdownCloseTimerRef.current);
+    dropdownCloseTimerRef.current = setTimeout(() => setDropdownOpen(false), 160);
+  }, []);
+
+  useEffect(() => {
+    return () => clearTimeout(dropdownCloseTimerRef.current);
+  }, []);
+
+  // ── API call function ──
+  const sendToAPI = async (data) => {
+    try {
+      const response = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      return await response.json();
+    } catch (error) {
+      console.error("API Error:", error);
+      return { success: false, message: "Network error" };
+    }
+  };
 
   /* ── open/close Site Visit ── */
   const openVisit = useCallback(() => {
     setSubmitted(false);
     setStep(1);
     setSelectedSlot("");
+    setVisitLoading(false);
     setFormData({ name: "", phone: "", email: "", project: "", date: "", message: "" });
     setVisitOpen(true);
     setVisitPhase("idle");
@@ -133,57 +183,87 @@ export default function Header() {
     }, 280);
   }, []);
 
-  /* ── open/close Brochure ── */
-  const openBrochure = useCallback(() => {
-    setBrochureSubmitted(false);
-    setBrochureLoading(false);
-    setBrochureFormData({ name: "", phone: "", email: "", city: "" });
-    setBrochureOpen(true);
-    setBrochurePhase("idle");
+  /* ── open/close Enquiry ── */
+  const openEnquiry = useCallback(() => {
+    setEnquirySubmitted(false);
+    setEnquiryLoading(false);
+    setEnquiryFormData({ name: "", phone: "", email: "", city: "" });
+    setEnquiryOpen(true);
+    setEnquiryPhase("idle");
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => setBrochurePhase("entering"));
+      requestAnimationFrame(() => setEnquiryPhase("entering"));
     });
-    clearTimeout(brochureTimerRef.current);
-    brochureTimerRef.current = setTimeout(() => setBrochurePhase("entered"), 380);
+    clearTimeout(enquiryTimerRef.current);
+    enquiryTimerRef.current = setTimeout(() => setEnquiryPhase("entered"), 380);
   }, []);
 
-  const closeBrochure = useCallback(() => {
-    setBrochurePhase("leaving");
-    clearTimeout(brochureTimerRef.current);
-    brochureTimerRef.current = setTimeout(() => {
-      setBrochureOpen(false);
-      setBrochurePhase("idle");
-      setBrochureSubmitted(false);
-      setBrochureFormData({ name: "", phone: "", email: "", city: "" });
-      setBrochureLoading(false);
+  const closeEnquiry = useCallback(() => {
+    setEnquiryPhase("leaving");
+    clearTimeout(enquiryTimerRef.current);
+    enquiryTimerRef.current = setTimeout(() => {
+      setEnquiryOpen(false);
+      setEnquiryPhase("idle");
+      setEnquirySubmitted(false);
+      setEnquiryFormData({ name: "", phone: "", email: "", city: "" });
+      setEnquiryLoading(false);
     }, 280);
   }, []);
 
-  const handleBrochureChange = (e) =>
-    setBrochureFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleEnquiryChange = (e) =>
+    setEnquiryFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
-  const handleBrochureSubmit = (e) => {
+  const handleEnquirySubmit = async (e) => {
     e.preventDefault();
-    setBrochureLoading(true);
+    setEnquiryLoading(true);
+    
+    // Send to API
+    const apiData = {
+      name: enquiryFormData.name,
+      email: enquiryFormData.email,
+      phone: enquiryFormData.phone,
+      location: enquiryFormData.city,
+      message: "General enquiry - requesting more information",
+      subject: "General Enquiry Request",
+    };
+    
+    await sendToAPI(apiData);
+    
     setTimeout(() => {
-      setBrochureLoading(false);
-      setBrochureSubmitted(true);
-      const link = document.createElement("a");
-      link.href = "/brochure.pdf";
-      link.download = "GPD-Brochure.pdf";
-      link.click();
-    }, 1400);
+      setEnquiryLoading(false);
+      setEnquirySubmitted(true);
+    }, 1500);
+  };
+
+  const handleVisitSubmit = async () => {
+    setVisitLoading(true);
+    
+    const apiData = {
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      location: formData.project,
+      message: `Preferred Date: ${formData.date}\nPreferred Time: ${selectedSlot}\nMessage: ${formData.message}`,
+      subject: "Site Visit Booking Request",
+    };
+    
+    await sendToAPI(apiData);
+    
+    setTimeout(() => {
+      setVisitLoading(false);
+      setSubmitted(true);
+    }, 1500);
   };
 
   const handleField = (key, val) => setFormData(p => ({ ...p, [key]: val }));
 
   const navLinks1 = [
-    { label: "HOME",     href: "/" },
+    { label: "HOME", href: "/" },
     { label: "ABOUT US", href: "/aboutus" },
   ];
   const navLinks2 = [
     { label: "EMI CALCULATOR", href: "/emicalculator" },
-    { label: "CONTACT US",     href: "/contactus" },
+    { label: "BLOGS", href: "/blogs" },
+    { label: "CONTACT US", href: "/contactus" },
   ];
 
   const stepLabels = ["Your Details", "Project & Date", "Confirm"];
@@ -205,7 +285,6 @@ export default function Header() {
         .gpd-nav-box.scrolled {
           background: rgba(0,0,0,0.92);
           backdrop-filter: blur(12px);
-          border-bottom: 1px solid rgba(255,255,255,0.08);
         }
 
         /* ─── top bar ─── */
@@ -214,6 +293,19 @@ export default function Header() {
           justify-content: space-between; padding: 0 50px;
           flex-shrink: 0; font-family: 'Sora', sans-serif;
           position: relative; z-index: 2;
+        }
+
+        .up-logo {
+          height: 70px;
+          width: auto;
+          object-fit: contain;
+          display: block;
+        }
+
+        @media (max-width: 768px) {
+          .up-logo {
+            height: 45px !important;
+          }
         }
 
         /* ══════════════════════════════
@@ -474,12 +566,13 @@ export default function Header() {
           justify-content: center; gap: 10px;
           transition: background .2s, transform .15s;
         }
-        .gpd-btn-confirm:hover { background: #0b7d4d; transform: translateY(-1px); }
+        .gpd-btn-confirm:hover:not(:disabled) { background: #0b7d4d; transform: translateY(-1px); }
+        .gpd-btn-confirm:disabled { opacity: 0.7; cursor: not-allowed; }
 
-        /* Brochure button */
-        .gpd-btn-brochure {
+        /* Enquiry submit button */
+        .gpd-btn-submit {
           width: 100%; padding: 13px 20px; 
-          background: #b03030; 
+          background: #e31e24; 
           color: #fff; border: none; border-radius: 10px;
           font-family: 'Sora', sans-serif; font-size: 11.5px;
           font-weight: 700; letter-spacing: 1.1px; text-transform: uppercase;
@@ -487,11 +580,11 @@ export default function Header() {
           justify-content: center; gap: 10px;
           transition: background .2s, transform .15s, opacity .2s;
         }
-        .gpd-btn-brochure:hover:not(:disabled) { 
-          background: #8a2222;
+        .gpd-btn-submit:hover:not(:disabled) { 
+          background: #c01820;
           transform: translateY(-1px); 
         }
-        .gpd-btn-brochure:disabled { opacity: 0.75; cursor: not-allowed; }
+        .gpd-btn-submit:disabled { opacity: 0.75; cursor: not-allowed; }
 
         .gpd-spinner {
           width: 14px; height: 14px; border-radius: 50%;
@@ -541,7 +634,7 @@ export default function Header() {
         .gpd-done-btn:hover { border-color: #e31e24; color: #fff; }
 
         /* ══════════════════════════════
-           IMAGE COLUMN — clean, no text
+           IMAGE COLUMN
         ══════════════════════════════ */
         .gpd-image-col {
           position: relative; overflow: hidden;
@@ -564,7 +657,7 @@ export default function Header() {
           z-index: 10; width: 32px; height: 32px; border-radius: 50%;
           background: rgba(255,255,255,0.08);
           border: 1px solid rgba(255,255,255,0.14);
-          color: #fff; cursor: pointer;
+          color: #000000; cursor: pointer;
           display: flex; align-items: center; justify-content: center;
           transition: background 0.2s, transform 0.25s;
         }
@@ -572,45 +665,65 @@ export default function Header() {
 
         /* ─── NAV LINKS ─── */
         .gpd-link {
-          color: rgba(255,255,255,0.75); text-decoration: none;
-          font-size: 13px; font-weight: 600; letter-spacing: 1px;
-          border-bottom: 2px solid transparent; padding-bottom: 6px;
-          display: inline-block; transition: all 0.3s ease;
+          color: rgba(255,255,255,0.75);
+          text-decoration: none;
+          font-size: 13px;
+          font-weight: 600;
+          letter-spacing: 1px;
+          padding: 8px 0;
+          position: relative;
+          transition: color 0.3s ease;
           font-family: 'Sora', sans-serif;
         }
-        .gpd-link:hover, .gpd-link.active { color: #fff; border-bottom-color: #e31e24; }
-
-        .gpd-cta-btn {
-          background: #e31e24; color: #fff;
-          padding: 12px 24px; border-radius: 6px;
-          font-size: 13px; font-weight: 700; letter-spacing: 1px;
-          display: flex; align-items: center; gap: 10px;
-          border: none; cursor: pointer; font-family: 'Sora', sans-serif;
-          transition: background 0.25s, transform 0.15s; white-space: nowrap;
+        .gpd-link::after {
+          content: '';
+          position: absolute;
+          bottom: -2px;
+          left: 0;
+          width: 0;
+          height: 2px;
+          background: #e3b450;
+          transition: width 0.3s ease;
         }
-        .gpd-cta-btn:hover { background: #bf1a20; transform: translateY(-1px); }
+        .gpd-link:hover { color: #fff; }
+        .gpd-link:hover::after { width: 100%; }
+        .gpd-link.active { color: #e3b450; }
+        .gpd-link.active::after { width: 100%; }
 
         .gpd-cta-btn-secondary {
-           background: #c01820;  color: #fff;
+          background: #c01820; color: #fff;
           padding: 12px 24px; border-radius: 6px;
           font-size: 13px; font-weight: 700; letter-spacing: 1px;
           display: flex; align-items: center; gap: 10px;
-          border: 1.5px solid rgba(255,255,255,0.25); cursor: pointer;
+          border: 1.5px solid rgba(255,255,255,0.25);
+          cursor: pointer;
           font-family: 'Sora', sans-serif;
-          transition: border-color 0.25s, transform 0.15s; white-space: nowrap;
+          transition: border-color 0.25s, transform 0.15s;
+          white-space: nowrap;
         }
-        .gpd-cta-btn-secondary:hover { border-color: rgba(255,255,255,0.6); transform: translateY(-1px); }
+        .gpd-cta-btn-secondary:hover {
+          border-color: rgba(255,255,255,0.6);
+          transform: translateY(-1px);
+        }
 
         .gpd-dropdown-trigger {
           background: none; border: none; cursor: pointer;
           display: flex; align-items: center; gap: 5px;
-          color: rgba(255,255,255,0.75); font-size: 13px;
-          font-weight: 600; letter-spacing: 1px;
-          border-bottom: 2px solid transparent; padding-bottom: 6px;
-          font-family: 'Sora', sans-serif; transition: all 0.3s ease;
+          color: rgba(255,255,255,0.75);
+          font-size: 13px; font-weight: 600; letter-spacing: 1px;
+          padding: 8px 0; position: relative;
+          font-family: 'Sora', sans-serif;
+          transition: color 0.3s ease; margin-top: 3px;
         }
-        .gpd-dropdown-trigger:hover,
-        .gpd-dropdown-trigger[aria-expanded="true"] { color: #fff; border-bottom-color: #e31e24; }
+        .gpd-dropdown-trigger::after {
+          content: ''; position: absolute; bottom: -2px; left: 0;
+          width: 0; height: 2px; background: #e3b450;
+          transition: width 0.3s ease;
+        }
+        .gpd-dropdown-trigger:hover { color: #fff; }
+        .gpd-dropdown-trigger:hover::after { width: 100%; }
+        .gpd-dropdown-trigger[aria-expanded="true"] { color: #e3b450; }
+        .gpd-dropdown-trigger[aria-expanded="true"]::after { width: 100%; }
 
         /* ─── PROJECTS DROPDOWN ─── */
         .proj-dropdown {
@@ -629,6 +742,12 @@ export default function Header() {
           transform:translateX(-50%); width:14px; height:14px;
           background:#fff; border-radius:2px; rotate:45deg;
           box-shadow:-2px -2px 6px rgba(0,0,0,0.06);
+        }
+        /* Invisible bridge so the gap between trigger and menu doesn't break hover */
+        .proj-dropdown-bridge {
+          position: absolute; top: 100%; left: 50%;
+          transform: translateX(-50%); width: 560px; height: 16px;
+          z-index: 998;
         }
         .dropdown-header { padding:14px 20px 10px; border-bottom:1px solid #f0ede8; display:flex; align-items:center; justify-content:space-between; }
         .dropdown-header-label { font-size:10px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:#9a9a9a; font-family:'Sora',sans-serif; }
@@ -655,7 +774,7 @@ export default function Header() {
 
         /* ─── HAMBURGER ─── */
         .hamburger-btn { display:none; flex-direction:column; justify-content:center; align-items:center; gap:5px; width:40px; height:40px; background:none; border:none; cursor:pointer; padding:0; z-index:1100; }
-        .hamburger-btn span { display:block; width:24px; height:2px; background:#fff; border-radius:2px; transition:all 0.3s ease; transform-origin:center; }
+        .hamburger-btn span { display:block; width:24px; height:2px; background: #e3b450; border-radius:2px; transition:all 0.3s ease; transform-origin:center; }
         .hamburger-btn.open span:nth-child(1) { transform:translateY(7px) rotate(45deg); }
         .hamburger-btn.open span:nth-child(2) { opacity:0; transform:scaleX(0); }
         .hamburger-btn.open span:nth-child(3) { transform:translateY(-7px) rotate(-45deg); }
@@ -672,9 +791,9 @@ export default function Header() {
         .mobile-nav-links { list-style:none; margin:0; padding:16px 0; flex:1; }
         .mobile-nav-link { display:block; padding:14px 24px; color:rgba(255,255,255,0.8); font-family:'Sora',sans-serif; font-size:13px; font-weight:600; letter-spacing:1px; text-decoration:none; border-bottom:1px solid rgba(255,255,255,0.05); transition:color 0.2s, background 0.2s; }
         .mobile-nav-link:hover { color:#fff; background:rgba(255,255,255,0.04); }
-        .mobile-nav-link.active { color:#fff; border-left:3px solid #e31e24; padding-left:21px; }
+        .mobile-nav-link.active { color:#e3b450; border-left:3px solid #e3b450; padding-left:21px; }
         .mobile-projects-trigger { display:flex; align-items:center; justify-content:space-between; padding:14px 24px; color:rgba(255,255,255,0.8); font-family:'Sora',sans-serif; font-size:13px; font-weight:600; letter-spacing:1px; border:none; background:none; cursor:pointer; width:100%; border-bottom:1px solid rgba(255,255,255,0.05); transition:color 0.2s; }
-        .mobile-projects-trigger.open { color:#fff; }
+        .mobile-projects-trigger.open { color:#e3b450; }
         .mobile-projects-trigger svg { transition:transform 0.25s; }
         .mobile-projects-trigger.open svg { transform:rotate(180deg); }
         .mobile-projects-list { background:rgba(255,255,255,0.03); overflow:hidden; max-height:0; transition:max-height 0.35s ease; }
@@ -705,7 +824,7 @@ export default function Header() {
           .gpd-form-col { padding: 30px 26px !important; }
         }
         @media (max-width: 640px) {
-          .gpd-topbar { height:72px !important; padding:0 16px !important; }
+          .gpd-topbar { height:66px !important; padding:0 16px !important; }
           .gpd-modal-backdrop { padding: 0 !important; align-items: flex-end !important; }
           .gpd-modal-card {
             max-width: 100% !important; width: 100%;
@@ -728,21 +847,27 @@ export default function Header() {
       <div className="gpd-nav-wrapper" style={{ zIndex: 1000 }}>
         <div className={`gpd-nav-box${scrolled ? " scrolled" : ""}`}>
           <div className="gpd-topbar">
-            <a href="/" style={{ display:"flex", alignItems:"center", flexShrink:0, textDecoration:"none" }}>
-              <img src="/uplogo.png" alt="Genuine Property Developers"
-                style={{ height:"70px", width:"auto", objectFit:"contain", display:"block" }} />
-            </a>
+            <Link href="/" style={{ display:"flex", alignItems:"center", flexShrink:0, textDecoration:"none" }}>
+              <img src="/uplogo.png" alt="Genuine Property Developers" className="up-logo" />
+            </Link>
 
             {/* DESKTOP NAV */}
             <ul className="gpd-desktop-nav" style={{ display:"flex", alignItems:"center", gap:"28px", listStyle:"none", margin:0, padding:0 }}>
-              {navLinks1.map((link, i) => (
+              {navLinks1.map((link) => (
                 <li key={link.label}>
-                  <a href={link.href} className={`gpd-link${i === 0 ? " active" : ""}`}>{link.label}</a>
+                  <Link href={link.href} className={`gpd-link${isActive(link.href) ? " active" : ""}`}>
+                    {link.label}
+                  </Link>
                 </li>
               ))}
 
               {/* PROJECTS DROPDOWN */}
-              <li style={{ position:"relative" }} ref={dropdownRef}>
+              <li
+                style={{ position:"relative" }}
+                ref={dropdownRef}
+                onMouseEnter={openDropdownOnHover}
+                onMouseLeave={closeDropdownOnHover}
+              >
                 <button
                   className="gpd-dropdown-trigger"
                   onClick={() => setDropdownOpen(v => !v)}
@@ -755,57 +880,61 @@ export default function Header() {
                   </svg>
                 </button>
                 {dropdownOpen && (
-                  <div className="proj-dropdown" role="menu">
-                    <div className="dropdown-header">
-                      <span className="dropdown-header-label">Ongoing Projects</span>
-                      <span className="dropdown-header-count">3 Active Projects</span>
-                    </div>
-                    {PROJECTS.map(proj => (
-                      <a key={proj.slug} href={`/projects/${proj.slug}`} className="proj-card" role="menuitem"
-                        onClick={() => setDropdownOpen(false)}>
-                        <div className="proj-accent-bar" />
-                        <div className="proj-body">
-                          <div className="proj-top">
-                            <div className="proj-name">{proj.name}</div>
-                            <span className="proj-status" style={{ background: proj.statusColor+"18", color: proj.statusColor, border:`1px solid ${proj.statusColor}30` }}>{proj.status}</span>
-                          </div>
-                          <div className="proj-category">{proj.category}</div>
-                          <div className="proj-meta">
-                            <div className="proj-location">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9a9a9a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                              {proj.location}
+                  <>
+                    <div className="proj-dropdown-bridge" />
+                    <div className="proj-dropdown" role="menu">
+                      <div className="dropdown-header">
+                        <span className="dropdown-header-label">Ongoing Projects</span>
+                        <span className="dropdown-header-count">3 Active Projects</span>
+                      </div>
+                      {PROJECTS.map(proj => (
+                        <Link key={proj.slug} href={`/projects/${proj.slug}`} className="proj-card" role="menuitem"
+                          onClick={() => setDropdownOpen(false)}>
+                          <div className="proj-accent-bar" />
+                          <div className="proj-body">
+                            <div className="proj-top">
+                              <div className="proj-name">{proj.name}</div>
+                              <span className="proj-status" style={{ background: proj.statusColor+"18", color: proj.statusColor, border:`1px solid ${proj.statusColor}30` }}>{proj.status}</span>
                             </div>
-                            <div className="proj-stats">{proj.stats}</div>
+                            <div className="proj-category">{proj.category}</div>
+                            <div className="proj-meta">
+                              <div className="proj-location">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9a9a9a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                {proj.location}
+                              </div>
+                              <div className="proj-stats">{proj.stats}</div>
+                            </div>
                           </div>
-                        </div>
-                        <div className="proj-arrow">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                        </div>
-                      </a>
-                    ))}
-                    <div className="dropdown-footer">
-                      <span className="dropdown-footer-text">More projects coming soon</span>
-                      <button className="dropdown-footer-link" onClick={() => { setDropdownOpen(false); window.location.href="/projects"; }}>
-                        View All Projects
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                      </button>
+                          <div className="proj-arrow">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                          </div>
+                        </Link>
+                      ))}
+                      <div className="dropdown-footer">
+                        <span className="dropdown-footer-text">More projects coming soon</span>
+                        <Link href="/Viewprojects" className="dropdown-footer-link" onClick={() => setDropdownOpen(false)}>
+                          View All Projects
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+                        </Link>
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
               </li>
 
-              {navLinks2.map(link => (
+              {navLinks2.map((link) => (
                 <li key={link.label}>
-                  <a href={link.href} className="gpd-link">{link.label}</a>
+                  <Link href={link.href} className={`gpd-link${isActive(link.href) ? " active" : ""}`}>
+                    {link.label}
+                  </Link>
                 </li>
               ))}
             </ul>
 
             {/* DESKTOP CTA GROUP */}
             <div className="gpd-desktop-cta-group" style={{ display:"flex", alignItems:"center", gap:"12px" }}>
-             
-              <button className="gpd-cta-btn-secondary" onClick={openBrochure}>
-                Book a site visit
+              <button className="gpd-cta-btn-secondary" onClick={openEnquiry}>
+                ENQUIRE NOW
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
                 </svg>
@@ -821,32 +950,29 @@ export default function Header() {
       </div>
 
       {/* ════════════════════════════════════════
-          BROCHURE MODAL (from HeroSection)
+          ENQUIRY MODAL
       ════════════════════════════════════════ */}
-      {brochureOpen && (
+      {enquiryOpen && (
         <div
-          className={`gpd-modal-backdrop${brochurePhase !== "idle" ? ` ${brochurePhase}` : ""}`}
-          onClick={closeBrochure}
+          className={`gpd-modal-backdrop${enquiryPhase !== "idle" ? ` ${enquiryPhase}` : ""}`}
+          onClick={closeEnquiry}
         >
           <div className="gpd-modal-card" onClick={(e) => e.stopPropagation()}>
-
-            {/* ── CLOSE BUTTON ── */}
-            <button className="gpd-close-btn" onClick={closeBrochure} aria-label="Close">
+            <button className="gpd-close-btn" onClick={closeEnquiry} aria-label="Close">
               <X size={15} />
             </button>
 
-            {/* ── LEFT: FORM ── */}
             <div className="gpd-form-col">
-              {!brochureSubmitted ? (
+              {!enquirySubmitted ? (
                 <>
                   <div className="gpd-tag-pill">
                     <div className="gpd-tag-dot" />
-                    <span>Exclusive Download</span>
+                    <span>Quick Enquiry</span>
                   </div>
-                  <h2 className="gpd-form-heading">Get Our Brochure</h2>
-                  <p className="gpd-form-sub">Share a few details and we&apos;ll send it right away.</p>
+                  <h2 className="gpd-form-heading">Get In Touch</h2>
+                  <p className="gpd-form-sub">Share your details and our team will reach out to you shortly.</p>
 
-                  <form onSubmit={handleBrochureSubmit} className="gpd-fields-block">
+                  <form onSubmit={handleEnquirySubmit} className="gpd-fields-block">
                     <div className="gpd-field-row">
                       <div className="gpd-field">
                         <label>Full Name <span style={{ color:"#b03030" }}>*</span></label>
@@ -854,10 +980,7 @@ export default function Header() {
                           <span className="gpd-input-icon">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                           </span>
-                          <input
-                            className="gpd-f" type="text" name="name" required
-                            placeholder="Your name" value={brochureFormData.name} onChange={handleBrochureChange}
-                          />
+                          <input className="gpd-f" type="text" name="name" required placeholder="Your name" value={enquiryFormData.name} onChange={handleEnquiryChange} />
                         </div>
                       </div>
                       <div className="gpd-field">
@@ -866,10 +989,7 @@ export default function Header() {
                           <span className="gpd-input-icon">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.34 2 2 0 0 1 3.59 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.56a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                           </span>
-                          <input
-                            className="gpd-f" type="tel" name="phone" required
-                            placeholder="+91 XXXXX XXXXX" value={brochureFormData.phone} onChange={handleBrochureChange}
-                          />
+                          <input className="gpd-f" type="tel" name="phone" required placeholder="+91 XXXXX XXXXX" value={enquiryFormData.phone} onChange={handleEnquiryChange} />
                         </div>
                       </div>
                     </div>
@@ -881,10 +1001,7 @@ export default function Header() {
                           <span className="gpd-input-icon">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                           </span>
-                          <input
-                            className="gpd-f" type="email" name="email"
-                            placeholder="you@email.com" value={brochureFormData.email} onChange={handleBrochureChange}
-                          />
+                          <input className="gpd-f" type="email" name="email" placeholder="you@email.com" value={enquiryFormData.email} onChange={handleEnquiryChange} />
                         </div>
                       </div>
                       <div className="gpd-field">
@@ -893,27 +1010,23 @@ export default function Header() {
                           <span className="gpd-input-icon">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
                           </span>
-                          <input
-                            className="gpd-f" type="text" name="city"
-                            placeholder="Chennai, Bangalore…" value={brochureFormData.city} onChange={handleBrochureChange}
-                          />
+                          <input className="gpd-f" type="text" name="city" placeholder="Chennai, Bangalore…" value={enquiryFormData.city} onChange={handleEnquiryChange} />
                         </div>
                       </div>
                     </div>
 
-                    <button type="submit" className="gpd-btn-brochure" disabled={brochureLoading} style={{ marginTop:"10px" }}>
-                      {brochureLoading ? (
+                    <button type="submit" className="gpd-btn-submit" disabled={enquiryLoading} style={{ marginTop:"10px" }}>
+                      {enquiryLoading ? (
                         <>
                           <span className="gpd-spinner" />
-                          Preparing Download…
+                          Submitting…
                         </>
                       ) : (
                         <>
-                          Download Brochure
+                          Submit Enquiry
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="7 10 12 15 17 10" />
-                            <line x1="12" y1="15" x2="12" y2="3" />
+                            <line x1="22" y1="2" x2="11" y2="13" />
+                            <polyline points="22 2 15 22 11 13 2 9 22 2" />
                           </svg>
                         </>
                       )}
@@ -924,30 +1037,24 @@ export default function Header() {
               ) : (
                 <div className="gpd-success">
                   <div className="gpd-success-ring">✅</div>
-                  <h3>Download Started!</h3>
+                  <h3>Thank You!</h3>
                   <p>
-                    Thank you, <strong>{brochureFormData.name}</strong>. Your brochure is downloading.
-                    Our team will reach out to you shortly.
+                    Thank you, <strong>{enquiryFormData.name}</strong>. Your enquiry has been received. Our team will contact you shortly.
                   </p>
-                  <button className="gpd-done-btn" onClick={closeBrochure}>CLOSE</button>
+                  <button className="gpd-done-btn" onClick={closeEnquiry}>CLOSE</button>
                 </div>
               )}
             </div>
 
-            {/* ── RIGHT: IMAGE ── */}
             <div className="gpd-image-col">
-              <img
-                src="form-1.png"
-                alt="GPD Project"
-              />
+              <img src="/form-1.png" alt="GPD Project" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             </div>
-
           </div>
         </div>
       )}
 
       {/* ════════════════════════════════════════
-          SITE VISIT MODAL (existing)
+          SITE VISIT MODAL
       ════════════════════════════════════════ */}
       {visitOpen && (
         <div
@@ -955,15 +1062,10 @@ export default function Header() {
           onClick={closeVisit}
         >
           <div className="gpd-modal-card" onClick={(e) => e.stopPropagation()}>
-
-            {/* ── CLOSE BUTTON ── */}
             <button className="gpd-close-btn" onClick={closeVisit} aria-label="Close">✕</button>
 
-            {/* ── LEFT: FORM ── */}
             <div className="gpd-form-col">
-
               {submitted ? (
-                /* ── SUCCESS ── */
                 <div className="gpd-success">
                   <div className="gpd-success-ring">✅</div>
                   <h3>Visit Confirmed!</h3>
@@ -972,7 +1074,6 @@ export default function Header() {
                 </div>
               ) : (
                 <>
-                  {/* Tag + heading */}
                   <div className="gpd-tag-pill">
                     <div className="gpd-tag-dot" />
                     <span>Site Visit</span>
@@ -980,7 +1081,6 @@ export default function Header() {
                   <h2 className="gpd-form-heading">Book Your Site Visit</h2>
                   <p className="gpd-form-sub">Our team will confirm your slot within 24 hours.</p>
 
-                  {/* STEP INDICATOR */}
                   <div className="gpd-steps-row">
                     {stepLabels.map((label, i) => {
                       const n = i + 1;
@@ -998,7 +1098,6 @@ export default function Header() {
                     })}
                   </div>
 
-                  {/* ── STEP 1: Details ── */}
                   {step === 1 && (
                     <div className="gpd-fields-block">
                       <div className="gpd-field-row">
@@ -1008,8 +1107,7 @@ export default function Header() {
                             <span className="gpd-input-icon">
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                             </span>
-                            <input className="gpd-f" type="text" placeholder="Rajesh Kumar"
-                              value={formData.name} onChange={e => handleField("name", e.target.value)} />
+                            <input className="gpd-f" type="text" placeholder="Rajesh Kumar" value={formData.name} onChange={e => handleField("name", e.target.value)} />
                           </div>
                         </div>
                         <div className="gpd-field">
@@ -1018,8 +1116,7 @@ export default function Header() {
                             <span className="gpd-input-icon">
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.34 2 2 0 0 1 3.59 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.56a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                             </span>
-                            <input className="gpd-f" type="tel" placeholder="+91 98765 43210"
-                              value={formData.phone} onChange={e => handleField("phone", e.target.value)} />
+                            <input className="gpd-f" type="tel" placeholder="+91 98765 43210" value={formData.phone} onChange={e => handleField("phone", e.target.value)} />
                           </div>
                         </div>
                       </div>
@@ -1030,8 +1127,7 @@ export default function Header() {
                             <span className="gpd-input-icon">
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                             </span>
-                            <input className="gpd-f" type="email" placeholder="you@email.com"
-                              value={formData.email} onChange={e => handleField("email", e.target.value)} />
+                            <input className="gpd-f" type="email" placeholder="you@email.com" value={formData.email} onChange={e => handleField("email", e.target.value)} />
                           </div>
                         </div>
                       </div>
@@ -1044,7 +1140,6 @@ export default function Header() {
                     </div>
                   )}
 
-                  {/* ── STEP 2: Project & Date ── */}
                   {step === 2 && (
                     <div className="gpd-fields-block">
                       <div className="gpd-field-row full">
@@ -1054,10 +1149,9 @@ export default function Header() {
                             <span className="gpd-input-icon">
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                             </span>
-                            <select className="gpd-f" value={formData.project}
-                              onChange={e => handleField("project", e.target.value)}>
+                            <select className="gpd-f" value={formData.project} onChange={e => handleField("project", e.target.value)}>
                               <option value="" disabled>Select a project</option>
-                              {PROJECTS.map(p => <option key={p.slug}>{p.name}</option>)}
+                              {PROJECTS.map(p => <option key={p.slug} value={p.name}>{p.name}</option>)}
                             </select>
                           </div>
                         </div>
@@ -1069,8 +1163,7 @@ export default function Header() {
                             <span className="gpd-input-icon">
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                             </span>
-                            <input className="gpd-f" type="date" value={formData.date}
-                              onChange={e => handleField("date", e.target.value)} />
+                            <input className="gpd-f" type="date" value={formData.date} onChange={e => handleField("date", e.target.value)} />
                           </div>
                         </div>
                       </div>
@@ -1078,11 +1171,7 @@ export default function Header() {
                         <label>Preferred Time Slot</label>
                         <div className="gpd-time-grid">
                           {TIME_SLOTS.map(slot => (
-                            <button
-                              key={slot.label}
-                              className={`gpd-slot${selectedSlot === slot.label ? " selected" : ""}`}
-                              onClick={() => setSelectedSlot(slot.label)}
-                            >
+                            <button key={slot.label} className={`gpd-slot${selectedSlot === slot.label ? " selected" : ""}`} onClick={() => setSelectedSlot(slot.label)}>
                               {slot.icon} {slot.label}
                             </button>
                           ))}
@@ -1101,17 +1190,16 @@ export default function Header() {
                     </div>
                   )}
 
-                  {/* ── STEP 3: Review & Confirm ── */}
                   {step === 3 && (
                     <div className="gpd-fields-block">
                       <div className="gpd-summary-card">
                         {[
-                          { icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>, label:"Name",    val: formData.name    || "—" },
-                          { icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.34 2 2 0 0 1 3.59 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.56a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>, label:"Phone",   val: formData.phone   || "—" },
-                          { icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>, label:"Email",   val: formData.email   || "—" },
-                          { icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>, label:"Project", val: formData.project  || "—" },
-                          { icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, label:"Date",    val: formData.date    || "—" },
-                          { icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, label:"Time",    val: selectedSlot     || "—" },
+                          { icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>, label:"Name", val: formData.name || "—" },
+                          { icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.34 2 2 0 0 1 3.59 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.56a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>, label:"Phone", val: formData.phone || "—" },
+                          { icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>, label:"Email", val: formData.email || "—" },
+                          { icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>, label:"Project", val: formData.project || "—" },
+                          { icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>, label:"Date", val: formData.date || "—" },
+                          { icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>, label:"Time", val: selectedSlot || "—" },
                         ].map(row => (
                           <div key={row.label} className="gpd-summary-row">
                             <div className="gpd-summary-icon" style={{ color:"rgba(255,255,255,0.3)" }}>{row.icon}</div>
@@ -1124,8 +1212,7 @@ export default function Header() {
                       <div className="gpd-field-row full" style={{ marginTop:"4px" }}>
                         <div className="gpd-field">
                           <label>Message (Optional)</label>
-                          <textarea className="gpd-f no-icon" placeholder="Any questions or special requirements…"
-                            value={formData.message} onChange={e => handleField("message", e.target.value)} />
+                          <textarea className="gpd-f no-icon" placeholder="Any questions or special requirements…" value={formData.message} onChange={e => handleField("message", e.target.value)} />
                         </div>
                       </div>
 
@@ -1134,9 +1221,18 @@ export default function Header() {
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
                           Back
                         </button>
-                        <button className="gpd-btn-confirm" onClick={() => setSubmitted(true)}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                          Confirm Visit
+                        <button className="gpd-btn-confirm" onClick={handleVisitSubmit} disabled={visitLoading}>
+                          {visitLoading ? (
+                            <>
+                              <span className="gpd-spinner" />
+                              Submitting…
+                            </>
+                          ) : (
+                            <>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                              Confirm Visit
+                            </>
+                          )}
                         </button>
                       </div>
                       <p className="gpd-privacy">🔒 Your details are kept strictly confidential.</p>
@@ -1146,14 +1242,9 @@ export default function Header() {
               )}
             </div>
 
-            {/* ── RIGHT: IMAGE ── */}
             <div className="gpd-image-col">
-              <img
-                src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=900&h=1200&fit=crop&q=80"
-                alt="GPD Project"
-              />
+              <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=900&h=1200&fit=crop&q=80" alt="GPD Project" />
             </div>
-
           </div>
         </div>
       )}
@@ -1167,8 +1258,8 @@ export default function Header() {
             <button className="mobile-drawer-close" onClick={() => setMobileMenuOpen(false)}>✕</button>
           </div>
           <ul className="mobile-nav-links">
-            <li><a href="/" className="mobile-nav-link active" onClick={() => setMobileMenuOpen(false)}>HOME</a></li>
-            <li><a href="/aboutus" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>ABOUT US</a></li>
+            <li><Link href="/" className={`mobile-nav-link${isActive("/") ? " active" : ""}`} onClick={() => setMobileMenuOpen(false)}>HOME</Link></li>
+            <li><Link href="/aboutus" className={`mobile-nav-link${isActive("/aboutus") ? " active" : ""}`} onClick={() => setMobileMenuOpen(false)}>ABOUT US</Link></li>
             <li>
               <button className={`mobile-projects-trigger${mobileProjectsOpen ? " open" : ""}`} onClick={() => setMobileProjectsOpen(v => !v)}>
                 PROJECTS
@@ -1176,26 +1267,27 @@ export default function Header() {
               </button>
               <div className={`mobile-projects-list${mobileProjectsOpen ? " open" : ""}`}>
                 {PROJECTS.map(proj => (
-                  <a key={proj.slug} href={`/projects/${proj.slug}`} className="mobile-proj-item" onClick={() => setMobileMenuOpen(false)}>
+                  <Link key={proj.slug} href={`/projects/${proj.slug}`} className="mobile-proj-item" onClick={() => setMobileMenuOpen(false)}>
                     <div className="mobile-proj-dot" style={{ background: proj.statusColor }}/>
                     <div className="mobile-proj-info">
                       <div className="mobile-proj-name">{proj.name}</div>
                       <div className="mobile-proj-loc">{proj.location}</div>
                     </div>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e31e24" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink:0 }}><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-                  </a>
+                  </Link>
                 ))}
                 <div className="mobile-projects-footer">
-                  <a href="/projects" onClick={() => setMobileMenuOpen(false)}>View All Projects <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a>
+                  <Link href="/projects" onClick={() => setMobileMenuOpen(false)}>View All Projects <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></Link>
                 </div>
               </div>
             </li>
-            <li><a href="/emicalculator" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>EMI CALCULATOR</a></li>
-            <li><a href="/contactus" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>CONTACT US</a></li>
+            <li><Link href="/emicalculator" className={`mobile-nav-link${isActive("/emicalculator") ? " active" : ""}`} onClick={() => setMobileMenuOpen(false)}>EMI CALCULATOR</Link></li>
+            <li><Link href="/blogs" className={`mobile-nav-link${isActive("/blogs") ? " active" : ""}`} onClick={() => setMobileMenuOpen(false)}>BLOGS</Link></li>
+            <li><Link href="/contactus" className={`mobile-nav-link${isActive("/contactus") ? " active" : ""}`} onClick={() => setMobileMenuOpen(false)}>CONTACT US</Link></li>
           </ul>
           <div className="mobile-drawer-cta">
-            <button className="mobile-cta-btn-secondary" onClick={() => { setMobileMenuOpen(false); openBrochure(); }}>
-              📄 DOWNLOAD BROCHURE
+            <button className="mobile-cta-btn-secondary" onClick={() => { setMobileMenuOpen(false); openEnquiry(); }}>
+              📋 ENQUIRE NOW
             </button>
             <button className="mobile-cta-btn" onClick={() => { setMobileMenuOpen(false); openVisit(); }}>
               BOOK A SITE VISIT

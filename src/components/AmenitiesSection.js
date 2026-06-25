@@ -4,11 +4,12 @@ import { useEffect, useRef } from "react";
 
 export default function AmenitiesSection() {
   const sectionRef = useRef(null);
+  const ctxRef = useRef(null);
 
   const amenities = [
     {
-      title: "MODERN AMENITIES",
-      desc: "Clubhouse, parks, sports & more for every age.",
+      title: "Safe & Secure Living",
+      desc: "Gated community environments designed for peace of mind.",
       icon: (
         <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -17,8 +18,8 @@ export default function AmenitiesSection() {
       ),
     },
     {
-      title: "GREEN & SERENE",
-      desc: "Landscaped greens for a peaceful life.",
+      title: "Green Open Spaces",
+      desc: "Beautiful surroundings that encourage healthier lifestyles.",
       icon: (
         <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
           <circle cx="12" cy="12" r="10" />
@@ -28,8 +29,8 @@ export default function AmenitiesSection() {
       ),
     },
     {
-      title: "SAFE & SECURE",
-      desc: "24/7 security for you and your loved ones.",
+      title: "Utilities",
+      desc: "Quality roads, electricity, water connections, and planned development.",
       icon: (
         <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -40,146 +41,234 @@ export default function AmenitiesSection() {
   ];
 
   useEffect(() => {
-    let ctx;
+    let isMounted = true;
 
-    const init = async () => {
-      const { gsap } = await import("gsap");
-      const { ScrollTrigger } = await import("gsap/ScrollTrigger");
-      const { SplitText } = await import("gsap/SplitText");
-      gsap.registerPlugin(ScrollTrigger, SplitText);
+    const initGSAP = async () => {
+      try {
+        const { gsap } = await import("gsap");
+        const { ScrollTrigger } = await import("gsap/ScrollTrigger");
+        const { SplitText } = await import("gsap/SplitText");
+        
+        gsap.registerPlugin(ScrollTrigger, SplitText);
 
-      ctx = gsap.context(() => {
-        const sec = sectionRef.current;
+        if (!isMounted || !sectionRef.current) return;
 
-        // ── Image: slide in from left ──
-        gsap.from(sec.querySelector(".ams-img-wrap"), {
-          scrollTrigger: {
-            trigger: sec,
-            start: "top 80%",
-            toggleActions: "play none none none",
-          },
-          x: -60,
-          opacity: 0,
-          duration: 1,
-          ease: "expo.out",
-        });
+        // Create GSAP context for cleanup
+        const ctx = gsap.context(() => {
+          const sec = sectionRef.current;
+          if (!sec) return;
 
-        // ── Eyebrow: char-by-char stagger ──
-        const eyebrow = sec.querySelector(".ams-eyebrow");
-        const splitEyebrow = new SplitText(eyebrow, { type: "chars" });
+          // Helper function to safely query elements
+          const safeQuery = (selector) => {
+            const el = sec.querySelector(selector);
+            if (!el) {
+              console.warn(`Element not found: ${selector} in AmenitiesSection`);
+            }
+            return el;
+          };
 
-        gsap.from(splitEyebrow.chars, {
-          scrollTrigger: {
-            trigger: eyebrow,
-            start: "top 85%",
-            toggleActions: "play none none none",
-          },
-          opacity: 0,
-          y: 10,
-          stagger: 0.03,
-          duration: 0.45,
-          ease: "power3.out",
-        });
+          // ── Image: slide in from left ──
+          const imgWrap = safeQuery(".ams-img-wrap");
+          if (imgWrap) {
+            gsap.from(imgWrap, {
+              scrollTrigger: {
+                trigger: sec,
+                start: "top 80%",
+                toggleActions: "play none none none",
+                markers: false, // Set to true for debugging
+              },
+              x: -60,
+              opacity: 0,
+              duration: 1,
+              ease: "expo.out",
+            });
+          }
 
-        // ── Heading: word clip-reveal (punch-through) ──
-        const heading = sec.querySelector(".ams-heading");
-        const splitHeading = new SplitText(heading, {
-          type: "words,lines",
-          linesClass: "ams-line-wrap",
-        });
+          // ── Eyebrow: char-by-char stagger ──
+          const eyebrow = safeQuery(".ams-eyebrow");
+          if (eyebrow) {
+            const splitEyebrow = new SplitText(eyebrow, { type: "chars" });
+            
+            // Set initial state
+            gsap.set(splitEyebrow.chars, {
+              opacity: 0,
+              y: 10
+            });
 
-        sec.querySelectorAll(".ams-line-wrap").forEach((line) => {
-          line.style.overflow = "hidden";
-          line.style.display = "block";
-        });
+            // Animate in
+            gsap.to(splitEyebrow.chars, {
+              scrollTrigger: {
+                trigger: eyebrow,
+                start: "top 85%",
+                toggleActions: "play none none none",
+                markers: false, // Set to true for debugging
+              },
+              opacity: 1,
+              y: 0,
+              stagger: 0.03,
+              duration: 0.45,
+              ease: "power3.out",
+            });
+          }
 
-        gsap.from(splitHeading.words, {
-          scrollTrigger: {
-            trigger: heading,
-            start: "top 83%",
-            toggleActions: "play none none none",
-          },
-          y: "110%",
-          opacity: 0,
-          stagger: 0.08,
-          duration: 0.8,
-          ease: "expo.out",
-        });
+          // ── Heading: word clip-reveal (punch-through) ──
+          const heading = safeQuery(".ams-heading");
+          if (heading) {
+            const splitHeading = new SplitText(heading, {
+              type: "words,lines",
+              linesClass: "ams-line-wrap",
+            });
 
-        // ── Divider: width expand from left ──
-        gsap.from(sec.querySelector(".ams-divider"), {
-          scrollTrigger: {
-            trigger: sec.querySelector(".ams-divider"),
-            start: "top 88%",
-            toggleActions: "play none none none",
-          },
-          scaleX: 0,
-          transformOrigin: "left center",
-          duration: 0.8,
-          ease: "power3.out",
-          delay: 0.2,
-        });
+            // Style the line wraps for clip reveal
+            const lineWraps = sec.querySelectorAll(".ams-line-wrap");
+            lineWraps.forEach((line) => {
+              line.style.overflow = "hidden";
+              line.style.display = "block";
+              line.style.lineHeight = "1.3"; // Ensure proper line height
+            });
 
-        // ── Amenity items: staggered fade-up with icon draw ──
-        const items = sec.querySelectorAll(".ams-item");
+            // Set initial state
+            gsap.set(splitHeading.words, {
+              y: "110%",
+              opacity: 0
+            });
 
-        items.forEach((item, i) => {
-          // Icon scale pop
-          gsap.from(item.querySelector(".ams-icon"), {
-            scrollTrigger: {
-              trigger: item,
-              start: "top 85%",
-              toggleActions: "play none none none",
-            },
-            scale: 0.4,
-            opacity: 0,
-            duration: 0.5,
-            ease: "back.out(2)",
-            delay: i * 0.1,
+            // Animate in
+            gsap.to(splitHeading.words, {
+              scrollTrigger: {
+                trigger: heading,
+                start: "top 83%",
+                toggleActions: "play none none none",
+                markers: false, // Set to true for debugging
+              },
+              y: "0%",
+              opacity: 1,
+              stagger: 0.08,
+              duration: 0.8,
+              ease: "expo.out",
+            });
+          }
+
+          // ── Divider: width expand from left ──
+          const divider = safeQuery(".ams-divider");
+          if (divider) {
+            gsap.from(divider, {
+              scrollTrigger: {
+                trigger: divider,
+                start: "top 88%",
+                toggleActions: "play none none none",
+                markers: false, // Set to true for debugging
+              },
+              scaleX: 0,
+              transformOrigin: "left center",
+              duration: 0.8,
+              ease: "power3.out",
+              delay: 0.2,
+            });
+          }
+
+          // ── Amenity items: staggered fade-up with icon draw ──
+          const items = sec.querySelectorAll(".ams-item");
+          
+          items.forEach((item, i) => {
+            // Icon scale pop
+            const icon = item.querySelector(".ams-icon");
+            if (icon) {
+              gsap.from(icon, {
+                scrollTrigger: {
+                  trigger: item,
+                  start: "top 85%",
+                  toggleActions: "play none none none",
+                  markers: false, // Set to true for debugging
+                },
+                scale: 0.4,
+                opacity: 0,
+                duration: 0.5,
+                ease: "back.out(2)",
+                delay: i * 0.15,
+              });
+            }
+
+            // Title: char stagger
+            const title = item.querySelector(".ams-item-title");
+            if (title) {
+              const splitTitle = new SplitText(title, { type: "chars" });
+              
+              // Set initial state
+              gsap.set(splitTitle.chars, {
+                opacity: 0,
+                y: 8
+              });
+
+              // Animate in
+              gsap.to(splitTitle.chars, {
+                scrollTrigger: {
+                  trigger: item,
+                  start: "top 85%",
+                  toggleActions: "play none none none",
+                  markers: false, // Set to true for debugging
+                },
+                opacity: 1,
+                y: 0,
+                stagger: 0.025,
+                duration: 0.4,
+                ease: "power2.out",
+                delay: 0.15 + i * 0.15,
+              });
+            }
+
+            // Desc: word fade-up
+            const desc = item.querySelector(".ams-item-desc");
+            if (desc) {
+              const splitDesc = new SplitText(desc, { type: "words" });
+              
+              // Set initial state
+              gsap.set(splitDesc.words, {
+                opacity: 0,
+                y: 6
+              });
+
+              // Animate in
+              gsap.to(splitDesc.words, {
+                scrollTrigger: {
+                  trigger: item,
+                  start: "top 85%",
+                  toggleActions: "play none none none",
+                  markers: false, // Set to true for debugging
+                },
+                opacity: 1,
+                y: 0,
+                stagger: 0.04,
+                duration: 0.4,
+                ease: "power2.out",
+                delay: 0.3 + i * 0.15,
+              });
+            }
           });
 
-          // Title: char stagger
-          const title = item.querySelector(".ams-item-title");
-          const splitTitle = new SplitText(title, { type: "chars" });
+          // ── CRITICAL: Refresh ScrollTrigger after all animations are set ──
+          ScrollTrigger.refresh();
 
-          gsap.from(splitTitle.chars, {
-            scrollTrigger: {
-              trigger: item,
-              start: "top 85%",
-              toggleActions: "play none none none",
-            },
-            opacity: 0,
-            y: 8,
-            stagger: 0.025,
-            duration: 0.4,
-            ease: "power2.out",
-            delay: 0.15 + i * 0.1,
-          });
+        }, sectionRef);
 
-          // Desc: word fade-up
-          const desc = item.querySelector(".ams-item-desc");
-          const splitDesc = new SplitText(desc, { type: "words" });
+        // Store context for cleanup
+        ctxRef.current = ctx;
 
-          gsap.from(splitDesc.words, {
-            scrollTrigger: {
-              trigger: item,
-              start: "top 85%",
-              toggleActions: "play none none none",
-            },
-            opacity: 0,
-            y: 6,
-            stagger: 0.04,
-            duration: 0.4,
-            ease: "power2.out",
-            delay: 0.3 + i * 0.1,
-          });
-        });
-      }, sectionRef);
+      } catch (error) {
+        console.error("Failed to initialize AmenitiesSection animations:", error);
+      }
     };
 
-    init();
+    initGSAP();
 
-    return () => ctx && ctx.revert();
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      if (ctxRef.current) {
+        ctxRef.current.revert();
+        ctxRef.current = null;
+      }
+    };
   }, []);
 
   return (
@@ -192,6 +281,7 @@ export default function AmenitiesSection() {
             src="/img-12.png"
             alt="Luxury villa at dusk"
             className="ams-img"
+            loading="lazy"
           />
         </div>
 
@@ -200,7 +290,7 @@ export default function AmenitiesSection() {
           <p className="ams-eyebrow">AMENITIES THAT</p>
 
           <h2 className="ams-heading">
-            Elevate Everyday <span className="ams-accent">Living</span>
+            Everything Your <span className="ams-accent"> Family Needs</span>
           </h2>
 
           <div className="ams-divider" />
@@ -220,9 +310,14 @@ export default function AmenitiesSection() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap');
 
+        *, *::before, *::after {
+          box-sizing: border-box;
+        }
+
         .ams-section {
           background: #111;
           font-family: 'Sora', 'DM Sans', sans-serif;
+          overflow: hidden; /* Prevent horizontal scroll from animations */
         }
 
         .ams-container {
@@ -236,6 +331,7 @@ export default function AmenitiesSection() {
           overflow: hidden;
           width: 100%;
           height: 240px;
+          position: relative;
         }
 
         .ams-img {
@@ -243,10 +339,17 @@ export default function AmenitiesSection() {
           height: 100%;
           object-fit: cover;
           display: block;
+          transition: transform 0.6s ease;
+        }
+
+        /* Optional hover effect for image */
+        .ams-img-wrap:hover .ams-img {
+          transform: scale(1.05);
         }
 
         .ams-content {
           padding: 40px 20px;
+          position: relative;
         }
 
         .ams-eyebrow {
@@ -256,6 +359,7 @@ export default function AmenitiesSection() {
           letter-spacing: 0.16em;
           text-transform: uppercase;
           margin: 0 0 10px;
+          font-family: 'Sora', sans-serif;
         }
 
         .ams-heading {
@@ -267,13 +371,18 @@ export default function AmenitiesSection() {
           line-height: 1.2;
         }
 
-        .ams-accent { color: #b03030; }
+        .ams-accent { 
+          color: #b03030; 
+          display: inline; /* Ensure it stays inline with text */
+        }
 
         .ams-divider {
           width: 100%;
           height: 1px;
           background: rgba(255,255,255,0.1);
           margin-bottom: 24px;
+          transform-origin: left center;
+          will-change: transform; /* Optimize for animation */
         }
 
         .ams-grid {
@@ -290,6 +399,12 @@ export default function AmenitiesSection() {
 
         .ams-icon {
           color: rgba(255,255,255,0.85);
+          transition: color 0.3s ease;
+        }
+
+        /* Optional hover effect for icon */
+        .ams-item:hover .ams-icon {
+          color: #b03030;
         }
 
         .ams-item-title {
@@ -299,6 +414,7 @@ export default function AmenitiesSection() {
           letter-spacing: 0.1em;
           margin: 0;
           text-transform: uppercase;
+          font-family: 'Sora', sans-serif;
         }
 
         .ams-item-desc {
@@ -306,6 +422,21 @@ export default function AmenitiesSection() {
           color: rgba(255,255,255,0.55);
           line-height: 1.6;
           margin: 0;
+        }
+
+        /* ── Animation-specific styles ── */
+        .ams-line-wrap {
+          overflow: hidden !important;
+          display: block !important;
+          line-height: 1.3;
+        }
+
+        /* Prevent FOUC (Flash of Unstyled Content) */
+        .ams-eyebrow .char,
+        .ams-heading .word,
+        .ams-item-title .char,
+        .ams-item-desc .word {
+          opacity: 0;
         }
 
         @media (min-width: 480px) {
@@ -355,7 +486,17 @@ export default function AmenitiesSection() {
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .ams-img { transition: none; }
+          .ams-img { 
+            transition: none !important; 
+          }
+          .ams-line-wrap {
+            overflow: visible !important;
+          }
+          * {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+          }
         }
       `}</style>
     </section>

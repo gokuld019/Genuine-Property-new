@@ -1,5 +1,6 @@
 "use client";
 import { useState, useMemo, useEffect, useRef } from "react";
+import Link from "next/link";
 
 function formatINR(n) {
   return `₹ ${Math.round(n).toLocaleString("en-IN")}`;
@@ -257,8 +258,18 @@ export default function EmiCalculatorPage() {
   const [interestRate, setInterestRate] = useState(6.5);
   const [tenure, setTenure] = useState(15);
   const [showTable, setShowTable] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useGsapAnimations();
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 640);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const emi = useMemo(() => calcEMI(loanAmount, interestRate, tenure), [loanAmount, interestRate, tenure]);
   const totalPayment = emi * tenure * 12;
@@ -315,7 +326,6 @@ export default function EmiCalculatorPage() {
   return (
     <>
       <style>{`
-        /* ── GPD FONT STACK ── Consistent Sora across all elements */
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap');
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -331,8 +341,6 @@ export default function EmiCalculatorPage() {
           --text-mid: #5a5a5a;
           --text-light: #9a9a9a;
           --border: #e8e4de;
-
-          /* ── All text uses Sora ── */
           --font-base: 'Sora', sans-serif;
         }
 
@@ -342,7 +350,6 @@ export default function EmiCalculatorPage() {
           color: var(--text-dark);
         }
 
-        /* ══ PRE-HIDE animated elements ══ */
         .hero-eyebrow,
         .hero h1,
         .hero-sub,
@@ -376,19 +383,18 @@ export default function EmiCalculatorPage() {
           }
         }
 
-        /* ══ HERO ══ */
-        /* Banner image lives here. Swap the url() below for your own image
-           (hosted asset, CDN link, or uploaded file path) — nothing else
-           needs to change. The two gradients layered on top keep the
-           eyebrow/heading/sub-text readable regardless of the photo. */
+        /* ── HERO ── */
         .hero {
-          position: relative; width: 100%; height: 570px;
-          background-image:
-            url('img-37.png');
+          position: relative;
+          width: 100%;
+          height: 570px;
+          background-image: url('img-37.png');
           background-size: cover;
           background-position: center;
           background-repeat: no-repeat;
-          display: flex; align-items: center; overflow: hidden;
+          display: flex;
+          align-items: center;
+          overflow: hidden;
         }
         .hero-grid {
           position: absolute; inset: 0;
@@ -396,6 +402,7 @@ export default function EmiCalculatorPage() {
             linear-gradient(rgba(184,42,42,0.07) 1px, transparent 1px),
             linear-gradient(90deg, rgba(184,42,42,0.07) 1px, transparent 1px);
           background-size: 60px 60px;
+          pointer-events: none;
         }
         .hero-accent {
           position: absolute; left: 0; top: 0; bottom: 0;
@@ -424,8 +431,9 @@ export default function EmiCalculatorPage() {
         .hero-sub {
           font-family: var(--font-base);
           margin-top: 16px; font-size: 14px; font-weight: 400;
-          color: rgba(255,255,255,0.5); max-width: 440px; line-height: 1.75;
+          color: rgba(255,255,255,0.5); max-width: 500px; line-height: 1.75;
         }
+
         .hero-deco {
           position: absolute;
           right: calc((100% - 1280px) / 2 + 100px);
@@ -433,6 +441,7 @@ export default function EmiCalculatorPage() {
           opacity: 0.05; pointer-events: none;
         }
 
+        /* ── BREADCRUMB ── */
         .breadcrumb {
           font-family: var(--font-base);
           padding: 14px 80px; font-size: 12px; color: var(--text-mid);
@@ -442,6 +451,7 @@ export default function EmiCalculatorPage() {
         .breadcrumb a { color: var(--text-mid); text-decoration: none; }
         .breadcrumb-current { color: var(--red); font-weight: 600; }
 
+        /* ── CALCULATOR ── */
         .calc-wrapper {
           max-width: 1280px; margin: 0 auto;
           padding: 60px 80px;
@@ -564,6 +574,7 @@ export default function EmiCalculatorPage() {
         }
         .tip-dot { width: 6px; height: 6px; background: var(--red); border-radius: 50%; margin-top: 7px; flex-shrink: 0; }
 
+        /* ── AMORTIZATION TABLE ── */
         .table-section { max-width: 1280px; margin: 0 auto; padding: 0 80px 80px; }
         .table-toggle { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; }
         .table-toggle h3 {
@@ -609,6 +620,7 @@ export default function EmiCalculatorPage() {
           font-size: 11px; color: var(--text-light); min-width: 36px;
         }
 
+        /* ── CTA STRIP ── */
         .cta-strip {
           background: var(--red); padding: 52px 80px;
           display: flex; align-items: center; justify-content: space-between; gap: 40px;
@@ -637,6 +649,7 @@ export default function EmiCalculatorPage() {
         }
         .btn-outline-white:hover { border-color: #fff; }
 
+        /* ── RANGE SLIDER ── */
         input[type=range] {
           -webkit-appearance: none; appearance: none;
           width: 100%; height: 4px;
@@ -658,6 +671,9 @@ export default function EmiCalculatorPage() {
           font-family: var(--font-base) !important;
         }
 
+        /* ── RESPONSIVE ── */
+
+        /* 1280px and below */
         @media (max-width: 1279px) {
           .hero-content { padding: 0 48px; }
           .hero-deco { right: 48px; }
@@ -666,6 +682,8 @@ export default function EmiCalculatorPage() {
           .table-section { padding: 0 48px 72px; }
           .cta-strip { padding: 48px 48px; }
         }
+
+        /* 1024px and below */
         @media (max-width: 1023px) {
           .hero { height: 360px; }
           .hero h1 { font-size: 44px; }
@@ -676,6 +694,8 @@ export default function EmiCalculatorPage() {
           .table-section { padding: 0 32px 64px; }
           .cta-strip { flex-direction: column; align-items: flex-start; padding: 44px 32px; }
         }
+
+        /* 900px and below */
         @media (max-width: 899px) {
           .hero { height: 320px; }
           .hero h1 { font-size: 36px; }
@@ -690,11 +710,40 @@ export default function EmiCalculatorPage() {
           .cta-btns { flex-direction: column; width: 100%; }
           .btn-white, .btn-outline-white { width: 100%; text-align: center; }
         }
-        @media (max-width: 599px) {
-          .hero { height: 280px; }
-          .hero h1 { font-size: 30px; }
-          .hero-eyebrow { font-size: 10px; }
-          .hero-sub { font-size: 12px; max-width: 100%; }
+
+        /* ── MOBILE: 640px and below ── */
+        /* Hero is 376×858 portrait — text anchored to bottom */
+        @media (max-width: 640px) {
+          .hero {
+            height: 858px;
+            background-image: url('emimob.jpeg');
+            background-position: center;
+            background-size: cover;
+            align-items: flex-end;
+            padding-bottom: 44px;
+          }
+          .hero-accent {
+            width: 3px;
+          }
+          .hero-content {
+            padding: 0 24px;
+          }
+          .hero h1 {
+            font-size: 32px;
+          }
+          .hero-eyebrow {
+            font-size: 10px;
+          }
+          .hero-sub {
+            font-size: 12px;
+            max-width: 100%;
+          }
+          .hero-deco {
+            display: none;
+          }
+
+          /* rest of 640px styles */
+          .breadcrumb { padding: 10px 24px; }
           .calc-wrapper { padding: 24px 16px; }
           .calc-card { padding: 24px 20px; }
           .calc-header h2 { font-size: 28px; }
@@ -709,12 +758,17 @@ export default function EmiCalculatorPage() {
           .amort-table td:nth-child(4) { display: none; }
           .cta-strip { padding: 36px 16px; }
           .cta-strip h3 { font-size: 28px; }
-          .breadcrumb { padding: 10px 16px; }
         }
+
+        /* 480px and below */
         @media (max-width: 479px) {
-          .hero { height: 240px; }
+          .hero {
+            height: 858px;
+            padding-bottom: 36px;
+          }
           .hero h1 { font-size: 26px; }
           .hero-accent { width: 3px; }
+          .hero-content { padding: 0 20px; }
           .calc-card { padding: 20px 16px; }
           .calc-header h2 { font-size: 24px; }
           .emi-amount { font-size: 34px; }
@@ -724,10 +778,15 @@ export default function EmiCalculatorPage() {
           .amort-table td, .amort-table thead th { padding: 12px 10px; font-size: 12px; }
           .cta-strip h3 { font-size: 24px; }
         }
+
+        /* 360px and below */
         @media (max-width: 359px) {
-          .hero { height: 210px; }
+          .hero {
+            height: 858px;
+            padding-bottom: 32px;
+          }
           .hero h1 { font-size: 22px; }
-          .hero-content { padding: 0 14px; }
+          .hero-content { padding: 0 16px; }
           .calc-wrapper, .table-section, .cta-strip, .breadcrumb { padding-left: 12px; padding-right: 12px; }
         }
       `}</style>
@@ -737,11 +796,11 @@ export default function EmiCalculatorPage() {
         <div className="hero-grid" />
         <div className="hero-accent" />
         <div className="hero-content">
-          <div className="hero-eyebrow">Financial Planning Tool</div>
-          <h1>EMI Calculator</h1>
+          {/* <div className="hero-eyebrow">Financial Planning Tool</div>
+          <h1>EMI CALCULATOR</h1>
           <p className="hero-sub">
-            Plan your plot investment with confidence. Adjust loan amount, interest rate, and tenure to instantly see your monthly commitment.
-          </p>
+            Adjust your loan amount, interest rate and tenure to see your exact monthly commitment in real time.
+          </p> */}
         </div>
         <div className="hero-deco" aria-hidden="true">
           <svg viewBox="0 0 300 300" width="280" height="280" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -758,20 +817,19 @@ export default function EmiCalculatorPage() {
 
       {/* BREADCRUMB */}
       <div className="breadcrumb">
-        <a href="/">Home</a>
+        <Link href="/">Home</Link>
         <span style={{ color: "var(--border)" }}>›</span>
         <span className="breadcrumb-current">EMI Calculator</span>
       </div>
 
       {/* MAIN CALCULATOR */}
       <div className="calc-wrapper">
-
         {/* LEFT: Sliders */}
         <div className="calc-card">
           <div className="calc-header">
             <div className="section-label">Loan Details</div>
             <h2>Calculate Your EMI</h2>
-            <p>Move the sliders to adjust your loan parameters. Results update instantly.</p>
+            <p>Adjust the sliders and watch your results update instantly.</p>
           </div>
 
           <div style={{ "--val": `${((loanAmount - 500000) / (10000000 - 500000)) * 100}%` }}>
@@ -861,9 +919,9 @@ export default function EmiCalculatorPage() {
 
           <div className="tips-card">
             <h4>💡 Smart Investment Tips</h4>
-            <div className="tip-row"><div className="tip-dot" /><span>A higher down payment reduces your interest burden significantly over the tenure.</span></div>
-            <div className="tip-row"><div className="tip-dot" /><span>Plots appreciate over time — your EMI is an investment, not just an expense.</span></div>
-            <div className="tip-row"><div className="tip-dot" /><span>Genuine plots offer flexible EMI options — contact us to customize your plan.</span></div>
+            <div className="tip-row"><div className="tip-dot" /><span>A higher initial down payment significantly reduces the total interest you pay across the loan tenure—saving you more in the long run.</span></div>
+            <div className="tip-row"><div className="tip-dot" /><span>When you invest in a plot, your EMI is not just a monthly expense — it is building equity in an asset that appreciates every year.</span></div>
+            <div className="tip-row"><div className="tip-dot" /><span>Genuine Property offers flexible EMI structures tailored to your budget – speak to our finance team to find the plan that works best for you.</span></div>
           </div>
         </div>
       </div>
@@ -913,12 +971,11 @@ export default function EmiCalculatorPage() {
       {/* CTA STRIP */}
       <section className="cta-strip">
         <div>
-          <h3>Ready to Make Your Plot a Reality?</h3>
-          <p>Our finance team will help you find the best EMI plan for your budget.</p>
+          <h3>Ready to Turn Your Plot Dream Into a Monthly Plan?</h3>
+          <p>Our finance team will work with you to find the most suitable EMI plan for your budget and timeline.</p>
         </div>
         <div className="cta-btns">
-          <button className="btn-outline-white">Download Brochure</button>
-          <button className="btn-white">Book A Free Site Visit →</button>
+          <button className="btn-white">Speak to Our Finance Team →</button>
         </div>
       </section>
     </>

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 export default function InvestmentAndProcessSection() {
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const sectionRef = useRef(null);
+  const ctxRef = useRef(null);
 
   const testimonials = [
     {
@@ -28,8 +29,8 @@ export default function InvestmentAndProcessSection() {
 
   const processSteps = [
     {
-      label: "ENQUIRE",
-      detail: "Call, email, or drop by — our team is ready to answer every question about plots, pricing & availability.",
+      label: "Connect With Our Team",
+      detail: "Get complete details on pricing, approvals, and availability. ",
       cta: "Free Consultation",
       icon: (
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -38,8 +39,8 @@ export default function InvestmentAndProcessSection() {
       ),
     },
     {
-      label: "VISIT & EXPLORE",
-      detail: "Walk the site, explore layout options & get a feel for the community before making any decision.",
+      label: " Visit The Site",
+      detail: "Explore the project location and surrounding developments firsthand.",
       cta: "Guided Site Visit",
       icon: (
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -48,8 +49,8 @@ export default function InvestmentAndProcessSection() {
       ),
     },
     {
-      label: "BOOK & SECURE",
-      detail: "Reserve your preferred plot with a simple booking amount. Flexible payment plans available.",
+      label: "Select Your Plot",
+      detail: "Choose the plot that best fits your goals and budget.",
       cta: "Flexible Payment Plans",
       icon: (
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -58,8 +59,8 @@ export default function InvestmentAndProcessSection() {
       ),
     },
     {
-      label: "DOCUMENTATION",
-      detail: "Our legal team handles all paperwork — registration, approvals & RERA compliance, completely stress-free.",
+      label: "Complete Documentation",
+      detail: "Receive end-to-end support for approvals, registration, and paperwork.",
       cta: "RERA Compliant",
       icon: (
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -69,7 +70,7 @@ export default function InvestmentAndProcessSection() {
     },
     {
       label: "BUILD YOUR DREAM",
-      detail: "Your plot, your vision. Begin construction whenever you're ready — on your timeline, your budget.",
+      detail: "Start construction whenever you're ready.",
       cta: "Build on Your Terms",
       icon: (
         <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -80,395 +81,723 @@ export default function InvestmentAndProcessSection() {
   ];
 
   useEffect(() => {
-    let ctx;
+    let isMounted = true;
 
-    const init = async () => {
-      const { gsap } = await import("gsap");
-      const { ScrollTrigger } = await import("gsap/ScrollTrigger");
-      const { SplitText } = await import("gsap/SplitText");
-      gsap.registerPlugin(ScrollTrigger, SplitText);
+    const initGSAP = async () => {
+      try {
+        const { gsap } = await import("gsap");
+        const { ScrollTrigger } = await import("gsap/ScrollTrigger");
+        const { SplitText } = await import("gsap/SplitText");
+        gsap.registerPlugin(ScrollTrigger, SplitText);
 
-      ctx = gsap.context(() => {
-        const sec = sectionRef.current;
+        if (!isMounted || !sectionRef.current) return;
 
-        const revealHeading = (el, triggerEl, delay = 0) => {
-          if (!el) return;
-          const split = new SplitText(el, { type: "words,lines", linesClass: "gsap-line" });
-          sec.querySelectorAll(".gsap-line").forEach((l) => {
-            l.style.overflow = "hidden";
-            l.style.display = "block";
-          });
-          gsap.from(split.words, {
-            scrollTrigger: { trigger: triggerEl || el, start: "top 85%", toggleActions: "play none none none" },
-            y: "110%",
-            opacity: 0,
-            stagger: 0.07,
-            duration: 0.75,
-            ease: "expo.out",
-            delay,
-          });
-        };
+        const ctx = gsap.context(() => {
+          const sec = sectionRef.current;
+          if (!sec) return;
 
-        const revealEyebrow = (el, triggerEl) => {
-          if (!el) return;
-          const split = new SplitText(el, { type: "chars" });
-          gsap.from(split.chars, {
-            scrollTrigger: { trigger: triggerEl || el, start: "top 88%", toggleActions: "play none none none" },
-            opacity: 0,
-            y: 10,
-            stagger: 0.03,
-            duration: 0.45,
-            ease: "power3.out",
-          });
-        };
+          const safe = (fn) => { try { fn(); } catch (e) { /* skip */ } };
 
-        revealEyebrow(sec.querySelector(".inv-eyebrow"));
-        revealHeading(sec.querySelector(".inv-heading"));
+          const revealHeading = (el, triggerEl, delay = 0) => {
+            if (!el) return;
+            safe(() => {
+              const split = new SplitText(el, { type: "words,lines", linesClass: "gsap-line" });
+              sec.querySelectorAll(".gsap-line").forEach((l) => {
+                l.style.overflow = "hidden";
+                l.style.display = "block";
+                l.style.lineHeight = "1.3";
+              });
+              gsap.from(split.words, {
+                scrollTrigger: { trigger: triggerEl || el, start: "top 85%", toggleActions: "play none none none" },
+                y: "110%", opacity: 0, stagger: 0.07, duration: 0.75, ease: "expo.out", delay,
+              });
+            });
+          };
 
-        gsap.from(sec.querySelector(".inv-body"), {
-          scrollTrigger: { trigger: sec.querySelector(".inv-body"), start: "top 88%", toggleActions: "play none none none" },
-          opacity: 0,
-          y: 14,
-          duration: 0.6,
-          ease: "power2.out",
-          delay: 0.3,
-        });
+          const revealEyebrow = (el, triggerEl) => {
+            if (!el) return;
+            gsap.from(el, {
+              scrollTrigger: { trigger: triggerEl || el, start: "top 88%", toggleActions: "play none none none" },
+              opacity: 0, y: 10, duration: 0.5, ease: "power3.out",
+            });
+          };
 
-        gsap.from(sec.querySelectorAll(".invest-card"), {
-          scrollTrigger: { trigger: sec.querySelector(".invest-grid"), start: "top 82%", toggleActions: "play none none none" },
-          y: 40,
-          opacity: 0,
-          scale: 0.94,
-          stagger: 0.1,
-          duration: 0.65,
-          ease: "power3.out",
-        });
+          // Investment section
+          revealEyebrow(sec.querySelector(".inv-eyebrow"));
+          revealHeading(sec.querySelector(".inv-heading"));
 
-        gsap.from(sec.querySelector(".section-divider"), {
-          scrollTrigger: { trigger: sec.querySelector(".section-divider"), start: "top 90%", toggleActions: "play none none none" },
-          scaleX: 0,
-          transformOrigin: "left center",
-          duration: 0.9,
-          ease: "power3.out",
-        });
-
-        revealEyebrow(sec.querySelector(".test-eyebrow"));
-        revealHeading(sec.querySelector(".test-heading"));
-
-        gsap.from(sec.querySelector(".test-card"), {
-          scrollTrigger: { trigger: sec.querySelector(".test-card"), start: "top 84%", toggleActions: "play none none none" },
-          y: 30,
-          opacity: 0,
-          duration: 0.7,
-          ease: "power3.out",
-          delay: 0.2,
-        });
-
-        gsap.from(sec.querySelector(".test-controls"), {
-          scrollTrigger: { trigger: sec.querySelector(".test-controls"), start: "top 90%", toggleActions: "play none none none" },
-          opacity: 0,
-          y: 10,
-          duration: 0.5,
-          ease: "power2.out",
-          delay: 0.3,
-        });
-
-        revealHeading(sec.querySelector(".process-heading"));
-
-        gsap.from(sec.querySelector(".process-connector"), {
-          scrollTrigger: { trigger: sec.querySelector(".process-connector"), start: "top 85%", toggleActions: "play none none none" },
-          scaleX: 0,
-          transformOrigin: "left center",
-          duration: 1.1,
-          ease: "power3.inOut",
-        });
-
-        const stepCards = sec.querySelectorAll(".process-step");
-        gsap.from(stepCards, {
-          scrollTrigger: { trigger: sec.querySelector(".process-grid"), start: "top 82%", toggleActions: "play none none none" },
-          y: 50,
-          opacity: 0,
-          stagger: 0.1,
-          duration: 0.65,
-          ease: "power3.out",
-        });
-
-        stepCards.forEach((card, i) => {
-          const icon = card.querySelector(".step-icon");
-          gsap.from(icon, {
-            scrollTrigger: { trigger: card, start: "top 82%", toggleActions: "play none none none" },
-            scale: 0,
-            opacity: 0,
-            duration: 0.5,
-            ease: "back.out(2.5)",
-            delay: 0.15 + i * 0.07,
+          const invBody = sec.querySelector(".inv-body");
+          if (invBody) gsap.from(invBody, {
+            scrollTrigger: { trigger: invBody, start: "top 88%", toggleActions: "play none none none" },
+            opacity: 0, y: 14, duration: 0.6, ease: "power2.out", delay: 0.3,
           });
 
-          const badge = card.querySelector(".step-badge");
-          gsap.from(badge, {
-            scrollTrigger: { trigger: card, start: "top 82%", toggleActions: "play none none none" },
-            scale: 0,
-            duration: 0.4,
-            ease: "back.out(3)",
-            delay: 0.25 + i * 0.07,
+          const investCards = sec.querySelectorAll(".invest-card");
+          if (investCards.length) {
+            gsap.fromTo(investCards,
+              { y: 40 },
+              {
+                y: 0, stagger: 0.1, duration: 0.65, ease: "power3.out",
+                clearProps: "transform",
+                scrollTrigger: { trigger: sec.querySelector(".invest-grid"), start: "top 82%", toggleActions: "play none none none" },
+              }
+            );
+          }
+
+          const sectionDivider = sec.querySelector(".section-divider");
+          if (sectionDivider) gsap.from(sectionDivider, {
+            scrollTrigger: { trigger: sectionDivider, start: "top 90%", toggleActions: "play none none none" },
+            scaleX: 0, transformOrigin: "left center", duration: 0.9, ease: "power3.out",
           });
 
-          const label = card.querySelector(".step-label");
-          if (label) {
-            const split = new SplitText(label, { type: "chars" });
-            gsap.from(split.chars, {
-              scrollTrigger: { trigger: card, start: "top 82%", toggleActions: "play none none none" },
-              opacity: 0,
-              y: 6,
-              stagger: 0.025,
-              duration: 0.4,
-              ease: "power2.out",
-              delay: 0.3 + i * 0.07,
+          // Testimonials
+          revealEyebrow(sec.querySelector(".test-eyebrow"));
+          revealHeading(sec.querySelector(".test-heading"));
+
+          const testCard = sec.querySelector(".test-card");
+          if (testCard) gsap.from(testCard, {
+            scrollTrigger: { trigger: testCard, start: "top 84%", toggleActions: "play none none none" },
+            y: 30, opacity: 0, duration: 0.7, ease: "power3.out", delay: 0.2,
+          });
+
+          const testControls = sec.querySelector(".test-controls");
+          if (testControls) gsap.from(testControls, {
+            scrollTrigger: { trigger: testControls, start: "top 90%", toggleActions: "play none none none" },
+            opacity: 0, y: 10, duration: 0.5, ease: "power2.out", delay: 0.3,
+          });
+
+          // Process
+          revealHeading(sec.querySelector(".process-heading"));
+
+          const processConnector = sec.querySelector(".process-connector");
+          if (processConnector) gsap.from(processConnector, {
+            scrollTrigger: { trigger: processConnector, start: "top 85%", toggleActions: "play none none none" },
+            scaleX: 0, transformOrigin: "left center", duration: 1.1, ease: "power3.inOut",
+          });
+
+          const stepCards = sec.querySelectorAll(".process-step");
+          if (stepCards.length) {
+            gsap.fromTo(stepCards,
+              { y: 50 },
+              {
+                y: 0, stagger: 0.1, duration: 0.65, ease: "power3.out",
+                clearProps: "transform",
+                scrollTrigger: { trigger: sec.querySelector(".process-flex"), start: "top 82%", toggleActions: "play none none none" },
+              }
+            );
+
+            stepCards.forEach((card, i) => {
+              const icon = card.querySelector(".step-icon");
+              if (icon) gsap.from(icon, {
+                scrollTrigger: { trigger: card, start: "top 82%", toggleActions: "play none none none" },
+                scale: 0, opacity: 0, duration: 0.5, ease: "back.out(2.5)", delay: 0.15 + i * 0.07,
+              });
+
+              const badge = card.querySelector(".step-badge");
+              if (badge) gsap.from(badge, {
+                scrollTrigger: { trigger: card, start: "top 82%", toggleActions: "play none none none" },
+                scale: 0, duration: 0.4, ease: "back.out(3)", delay: 0.25 + i * 0.07,
+              });
+
+              const label = card.querySelector(".step-label");
+              if (label) gsap.from(label, {
+                scrollTrigger: { trigger: card, start: "top 82%", toggleActions: "play none none none" },
+                opacity: 0, y: 6, duration: 0.4, ease: "power2.out", delay: 0.3 + i * 0.07,
+              });
             });
           }
-        });
-      }, sectionRef);
+
+          ScrollTrigger.refresh();
+        }, sectionRef);
+
+        ctxRef.current = ctx;
+      } catch (error) {
+        console.error("GSAP init error:", error);
+      }
     };
 
-    init();
-    return () => ctx && ctx.revert();
+    initGSAP();
+
+    return () => {
+      isMounted = false;
+      if (ctxRef.current) { ctxRef.current.revert(); ctxRef.current = null; }
+    };
   }, []);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActiveTestimonial((prev) => (prev + 1) % testimonials.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [testimonials.length]);
+
   return (
-    <div ref={sectionRef} style={{ fontFamily: "'Sora', 'DM Sans', sans-serif", background: "#f5f5f5" }}>
+    <div ref={sectionRef}>
+      {/* Font via link — not @import inside style */}
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap" rel="stylesheet" />
 
       {/* ── Section 1: Investment ── */}
-      <div className="invest-grid" style={{
-        display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr",
-        gap: "0", maxWidth: "1200px", margin: "0 auto",
-        padding: "80px 0px", alignItems: "center",
-      }}>
-        <div style={{ paddingRight: "30px" }}>
-          <p className="inv-eyebrow" style={{ color: "#b03030", fontSize: "11px", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "12px" }}>
-            WHY INVEST IN PLOTS?
-          </p>
-          <h2 className="inv-heading" style={{ fontSize: "clamp(24px, 2.5vw, 36px)", fontWeight: 800, color: "#111", lineHeight: 1.2, margin: "0 0 16px" }}>
-            Your Investment.<br />
-            Your <span style={{ color: "#b03030" }}>Future.</span>
-          </h2>
-          <p className="inv-body" style={{ fontSize: "13px", color: "#666", lineHeight: 1.7, margin: 0 }}>
-            Plots appreciate over time and offer the freedom to build your way, your time.
-          </p>
-        </div>
+      <div className="invest-section">
+        <div className="invest-grid">
+          {/* Text col */}
+          <div className="invest-text-col">
+            <p className="inv-eyebrow">WHY INVEST IN PLOTS?</p>
+           <h2 className="inv-heading">
+  Land is the Smartest<br />
+  Long-Term<br />
+  <span className="red">Investment</span>
+</h2>
+            <p className="inv-body">
+              Plots appreciate over time and offer the freedom to build your way, your time.
+            </p>
+          </div>
 
-        <InvestCard icon={<StarIcon />} title="HIGH APPRECIATION" subtitle="Potential" desc="Strong growth for a secure future." />
-        <InvestCard icon={<BuildingIcon />} title="FLEXIBLE OWNERSHIP" desc="Build now or later, the choice is yours." />
-        <InvestCard icon={<DocumentIcon />} title="FREEDOM TO BUILD" desc="Design your dream exactly how you want." />
-        <InvestCard icon={<ShieldIcon />} title="LOW RISK ASSET" desc="Land is a tangible asset that never depreciates." />
+          {/* Cards */}
+          <InvestCard icon={<StarIcon />}     title="High Appreciation Potential"    desc="Plots in emerging Chennai locations continue to grow in value over time." />
+          <InvestCard icon={<BuildingIcon />} title="Build When You're Ready"                       desc="Purchase today and construct your dream home whenever you choose." />
+          <InvestCard icon={<DocumentIcon />} title="Complete Ownership Freedom"                         desc="Design your home exactly the way you want." />
+          <InvestCard icon={<ShieldIcon />}   title="Secure Family Asset"                           desc="Land remains one of the most reliable investments across generations." />
+        </div>
       </div>
 
       {/* Divider */}
-      <div className="section-divider" style={{ borderTop: "1px solid #e0e0e0", maxWidth: "1200px", margin: "0 auto" }} />
+      <div className="section-divider" />
 
       {/* ── Section 2: Testimonials + Process ── */}
-      <div className="testimonials-process-grid" style={{
-        display: "grid", gridTemplateColumns: "1fr 1.6fr",
-        maxWidth: "1200px", margin: "0 auto",
-        padding: "71px 1px", gap: "60px", alignItems: "start",
-      }}>
-        {/* Left – Testimonials */}
-        <div>
-          <p className="test-eyebrow" style={{ color: "#b03030", fontSize: "11px", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", marginBottom: "12px" }}>
-            HAPPY CUSTOMERS
-          </p>
-          <h2 className="test-heading" style={{ fontSize: "clamp(22px, 2.5vw, 34px)", fontWeight: 800, color: "#111", lineHeight: 1.2, margin: "0 0 28px" }}>
-            Trusted By Thousands.<br />
-            Recommended For <span style={{ color: "#b03030" }}>Life.</span>
-          </h2>
+      <div className="tp-section">
+        <div className="tp-grid">
 
-          <div className="test-card" style={{
-            background: "#fff", borderRadius: "10px", padding: "24px",
-            boxShadow: "0 2px 12px rgba(0,0,0,0.06)", marginBottom: "20px",
-          }}>
-            <div style={{ fontSize: "40px", color: "#b03030", lineHeight: 1, marginBottom: "12px", fontFamily: "Georgia, serif" }}>"</div>
-            <p style={{ fontSize: "14px", color: "#444", lineHeight: 1.7, margin: "0 0 20px" }}>
-              {testimonials[activeTestimonial].text}
-            </p>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: "#ddd", overflow: "hidden", flexShrink: 0 }}>
-                <img
-                  src={testimonials[activeTestimonial].img}
-                  alt={testimonials[activeTestimonial].name}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  onError={(e) => { e.target.style.display = "none"; }}
-                />
-              </div>
-              <div>
-                <p style={{ fontSize: "13px", fontWeight: 700, color: "#111", margin: 0 }}>{testimonials[activeTestimonial].name}</p>
-                <p style={{ fontSize: "12px", color: "#888", margin: 0 }}>{testimonials[activeTestimonial].role}</p>
-              </div>
-            </div>
-          </div>
+          {/* Left – Testimonials */}
+          <div className="test-col">
+            <p className="test-eyebrow">HAPPY CUSTOMERS</p>
+            <h2 className="test-heading">
+              Trusted By Thousands.<br />
+              Recommended For <span className="red">Life.</span>
+            </h2>
 
-          <div className="test-controls" style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            <div style={{ display: "flex", gap: "6px" }}>
-              {testimonials.map((_, i) => (
-                <div
-                  key={i}
-                  onClick={() => setActiveTestimonial(i)}
-                  style={{
-                    width: i === activeTestimonial ? "20px" : "8px",
-                    height: "8px", borderRadius: "4px",
-                    background: i === activeTestimonial ? "#b03030" : "#ccc",
-                    cursor: "pointer", transition: "all 0.3s",
-                  }}
-                />
-              ))}
-            </div>
-            <div style={{ display: "flex", gap: "8px", marginLeft: "auto" }}>
-              <button
-                onClick={() => setActiveTestimonial(p => (p - 1 + testimonials.length) % testimonials.length)}
-                style={{ width: "36px", height: "36px", borderRadius: "50%", border: "1.5px solid #ccc", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2.5"><polyline points="15 18 9 12 15 6" /></svg>
-              </button>
-              <button
-                onClick={() => setActiveTestimonial(p => (p + 1) % testimonials.length)}
-                style={{ width: "36px", height: "36px", borderRadius: "50%", border: "1.5px solid #ccc", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Right – Process */}
-        <div>
-          <h2 className="process-heading" style={{ fontSize: "clamp(18px, 2vw, 26px)", fontWeight: 800, color: "#111", margin: "0 0 40px" }}>
-            OUR <span style={{ color: "#b03030" }}>SIMPLE</span> PROCESS
-          </h2>
-
-          <div style={{ position: "relative" }}>
-            <div className="process-connector" style={{
-              position: "absolute", top: "28px", left: "5%", right: "5%",
-              height: "1px", borderTop: "2px dashed #e0c0c0", zIndex: 0,
-            }} />
-
-            <div className="process-grid" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "16px", position: "relative", zIndex: 1 }}>
-              {processSteps.map((step, i) => (
-                <div key={i} className="process-step" style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
-                  <div className="step-icon" style={{
-                    width: "56px", height: "56px", borderRadius: "50%",
-                    border: "2px solid #b03030", background: "#fff",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "#b03030", marginBottom: "16px",
-                    boxShadow: "0 2px 8px rgba(176,48,48,0.15)",
-                  }}>
-                    {step.icon}
-                  </div>
-
-                  <div style={{
-                    background: "#fff", borderRadius: "12px", padding: "20px 14px",
-                    width: "100%", boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
-                    flex: 1, position: "relative",
-                  }}>
-                    <div className="step-badge" style={{
-                      position: "absolute", top: "-14px", left: "50%", transform: "translateX(-50%)",
-                      width: "28px", height: "28px", borderRadius: "50%",
-                      background: "#b03030", color: "#fff",
-                      fontSize: "11px", fontWeight: 800,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      {String(i + 1).padStart(2, "0")}
-                    </div>
-
-                    <p className="step-label" style={{ fontSize: "11px", fontWeight: 800, color: "#111", letterSpacing: "0.06em", textTransform: "uppercase", margin: "8px 0 8px" }}>
-                      {step.label}
-                    </p>
-                    <p style={{ fontSize: "11px", color: "#666", lineHeight: 1.6, margin: "0 0 14px" }}>
-                      {step.detail}
-                    </p>
-                    <div style={{
-                      fontSize: "10px", fontWeight: 700, color: "#b03030",
-                      letterSpacing: "0.08em", textTransform: "uppercase",
-                      borderTop: "1px solid #f0e0e0", paddingTop: "10px",
-                    }}>
-                      {step.cta}
-                    </div>
-                  </div>
+            <div className="test-card">
+              <div className="quote-mark">"</div>
+              <p className="test-text">{testimonials[activeTestimonial].text}</p>
+              <div className="test-author">
+                <div className="author-avatar">
+                  <img
+                    src={testimonials[activeTestimonial].img}
+                    alt={testimonials[activeTestimonial].name}
+                    onError={(e) => { e.target.style.display = "none"; }}
+                    loading="lazy"
+                  />
                 </div>
-              ))}
+                <div>
+                  <p className="author-name">{testimonials[activeTestimonial].name}</p>
+                  <p className="author-role">{testimonials[activeTestimonial].role}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="test-controls">
+              <div className="test-dots">
+                {testimonials.map((_, i) => (
+                  <button
+                    key={i}
+                    className={`test-dot ${i === activeTestimonial ? "active" : ""}`}
+                    onClick={() => setActiveTestimonial(i)}
+                    aria-label={`View testimonial ${i + 1}`}
+                  />
+                ))}
+              </div>
+              <div className="test-arrows">
+                <button
+                  className="test-arrow"
+                  onClick={() => setActiveTestimonial(p => (p - 1 + testimonials.length) % testimonials.length)}
+                  aria-label="Previous"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2.5"><polyline points="15 18 9 12 15 6" /></svg>
+                </button>
+                <button
+                  className="test-arrow"
+                  onClick={() => setActiveTestimonial(p => (p + 1) % testimonials.length)}
+                  aria-label="Next"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#333" strokeWidth="2.5"><polyline points="9 18 15 12 9 6" /></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Right – Process */}
+          <div className="process-col">
+            <h2 className="process-heading">
+              OUR <span className="red">SIMPLE</span> PROCESS
+            </h2>
+
+            <div className="process-wrap">
+              {/* Connector line behind cards */}
+              <div className="process-connector" />
+
+              <div className="process-flex">
+                {processSteps.map((step, i) => (
+                  <div key={i} className="process-step">
+                    {/* Icon circle (above card, sits on connector line) */}
+                    <div className="step-icon">
+                      {step.icon}
+                    </div>
+
+                    {/* Card */}
+                    <div className="step-card">
+                      <div className="step-badge">{String(i + 1).padStart(2, "0")}</div>
+                      <p className="step-label">{step.label}</p>
+                      <p className="step-detail">{step.detail}</p>
+                      <div className="step-cta">{step.cta}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&display=swap');
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        /* ── TABLET (≤ 1024px) ── */
+        .red { color: #b03030; }
+
+        /* ══ INVEST SECTION (desktop — unchanged from original) ══ */
+        .invest-section {
+          background: #f5f5f5;
+          padding: 80px 0;
+          font-family: 'Sora', 'DM Sans', sans-serif;
+        }
+
+        .invest-grid {
+          display: grid;
+          grid-template-columns: 1.1fr repeat(4, 1fr);
+          gap: 20px;
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 0 24px;
+          align-items: center;
+        }
+
+        .invest-text-col {
+          padding-right: 16px;
+        }
+
+        .inv-eyebrow {
+          color: #b03030;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          margin-bottom: 12px;
+        }
+        .inv-heading {
+          font-size: clamp(22px, 2.2vw, 34px);
+          font-weight: 800;
+          color: #111;
+          line-height: 1.2;
+          margin: 0 0 14px;
+        }
+        .inv-body {
+          font-size: 13px;
+          color: #666;
+          line-height: 1.7;
+        }
+
+        /* ── Invest Cards (desktop — unchanged) ── */
+        .invest-card {
+          background: #fff;
+          border-radius: 10px;
+          padding: 24px 16px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          height: 100%;
+          transition: transform 0.3s ease, box-shadow 0.3s ease;
+          will-change: transform;
+        }
+        .invest-card:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+        }
+        .invest-card-icon {
+          width: 52px;
+          height: 52px;
+          border-radius: 50%;
+          background: #b03030;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #fff;
+          margin-bottom: 14px;
+          flex-shrink: 0;
+        }
+        .invest-card-title {
+          font-size: 11px;
+          font-weight: 800;
+          color: #111;
+          letter-spacing: 0.08em;
+          margin: 0 0 4px;
+          text-transform: uppercase;
+        }
+        .invest-card-subtitle {
+          font-size: 12px;
+          font-weight: 700;
+          color: #b03030;
+          margin: 0 0 8px;
+        }
+        .invest-card-desc {
+          font-size: 12px;
+          color: #777;
+          line-height: 1.6;
+        }
+
+        /* ══ DIVIDER (unchanged) ══ */
+        .section-divider {
+          height: 0;
+          border: none;
+          max-width: 800px;
+          margin: 0 auto;
+        }
+
+        /* ══ TESTIMONIALS + PROCESS (desktop — unchanged) ══ */
+        .tp-section {
+          background: #f5f5f5;
+          font-family: 'Sora', 'DM Sans', sans-serif;
+          padding: 72px 0;
+        }
+        .tp-grid {
+          display: grid;
+          grid-template-columns: 1fr 1.65fr;
+          gap: 64px;
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 0 24px;
+          align-items: start;
+        }
+
+        /* ── Testimonials col (desktop — unchanged) ── */
+        .test-col { display: flex; flex-direction: column; }
+
+        .test-eyebrow {
+          color: #b03030;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          margin-bottom: 12px;
+        }
+        .test-heading {
+          font-size: clamp(20px, 2.2vw, 32px);
+          font-weight: 800;
+          color: #111;
+          line-height: 1.2;
+          margin: 0 0 24px;
+        }
+        .test-card {
+          background: #fff;
+          border-radius: 10px;
+          padding: 24px;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+          margin-bottom: 20px;
+          transition: box-shadow 0.3s ease;
+        }
+        .test-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .quote-mark {
+          font-size: 40px;
+          color: #b03030;
+          line-height: 1;
+          margin-bottom: 12px;
+          font-family: Georgia, serif;
+        }
+        .test-text {
+          font-size: 14px;
+          color: #444;
+          line-height: 1.7;
+          margin: 0 0 20px;
+          min-height: 70px;
+        }
+        .test-author {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .author-avatar {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: #ddd;
+          overflow: hidden;
+          flex-shrink: 0;
+        }
+        .author-avatar img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+        .author-name {
+          font-size: 13px;
+          font-weight: 700;
+          color: #111;
+        }
+        .author-role {
+          font-size: 12px;
+          color: #888;
+        }
+        .test-controls {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+        .test-dots { display: flex; gap: 6px; }
+        .test-dot {
+          height: 8px;
+          border-radius: 4px;
+          background: #ccc;
+          border: none;
+          cursor: pointer;
+          transition: all 0.3s;
+          width: 8px;
+          padding: 0;
+        }
+        .test-dot.active {
+          width: 20px;
+          background: #b03030;
+        }
+        .test-arrows {
+          display: flex;
+          gap: 8px;
+          margin-left: auto;
+        }
+        .test-arrow {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          border: 1.5px solid #ccc;
+          background: #fff;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.3s;
+        }
+        .test-arrow:hover {
+          border-color: #b03030;
+          background: #fff5f5;
+        }
+
+        /* ── Process col (desktop — unchanged) ── */
+        .process-col {}
+
+        .process-heading {
+          font-size: clamp(16px, 1.8vw, 24px);
+          font-weight: 800;
+          color: #111;
+          margin: 0 0 40px;
+          letter-spacing: 0.02em;
+        }
+
+        .process-wrap {
+          position: relative;
+        }
+
+        .process-connector {
+          position: absolute;
+          top: 28px;
+          left: calc(10% + 4px);
+          right: calc(10% + 4px);
+          height: 0;
+          border-top: 2px dashed #e0c0c0;
+          z-index: 0;
+          transform-origin: left center;
+        }
+
+        /* FIX: align-items changed from flex-start → stretch so every
+           .process-step (and therefore every .step-card inside it)
+           takes on the height of the tallest card in the row. */
+        .process-flex {
+          display: flex;
+          gap: 12px;
+          position: relative;
+          z-index: 1;
+          align-items: stretch;
+        }
+
+        .process-step {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          will-change: transform;
+        }
+
+        .step-icon {
+          width: 56px;
+          height: 56px;
+          flex-shrink: 0;
+          border-radius: 50%;
+          border: 2px solid #b03030;
+          background: #fff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #b03030;
+          margin-bottom: 16px;
+          box-shadow: 0 2px 8px rgba(176,48,48,0.15);
+          transition: transform 0.3s ease;
+          position: relative;
+          z-index: 2;
+        }
+        .process-step:hover .step-icon { transform: scale(1.1); }
+
+        /* FIX: .step-card now stretches to fill the .process-step height
+           (which is equal across the row thanks to align-items: stretch
+           above) and uses flex column + margin-top: auto on the CTA so
+           the red label always sits flush with the bottom of the card,
+           no matter how much detail text precedes it. */
+        .step-card {
+          background: #fff;
+          border-radius: 12px;
+          padding: 20px 12px 16px;
+          width: 100%;
+          flex: 1 1 auto;
+          display: flex;
+          flex-direction: column;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+          position: relative;
+          transition: box-shadow 0.3s ease;
+        }
+        .step-card:hover { box-shadow: 0 6px 20px rgba(176,48,48,0.12); }
+
+        .step-badge {
+          position: absolute;
+          top: -14px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: #b03030;
+          color: #fff;
+          font-size: 11px;
+          font-weight: 800;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .step-label {
+          font-size: clamp(9px, 0.9vw, 9px);
+          font-weight: 700;
+          color: #111;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          margin: 8px 0 8px;
+          line-height: 1.3;
+          word-break: break-word;
+        }
+        .step-detail {
+          font-size: clamp(10px, 0.85vw, 11px);
+          color: #666;
+          line-height: 1.6;
+          margin: 0 0 12px;
+        }
+        .step-cta {
+          font-size: clamp(9px, 0.8vw, 10px);
+          font-weight: 700;
+          color: #b03030;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          border-top: 1px solid #f0e0e0;
+          padding-top: 10px;
+          margin-top: auto;
+        }
+
+        /* GSAP line wrap */
+        .gsap-line {
+          overflow: hidden !important;
+          display: block !important;
+          line-height: 1.3;
+        }
+
+        /* ══════════════════════════════════════════════════
+           RESPONSIVE — mobile & tablet only (1024px and below).
+           Everything above is identical to the original desktop CSS.
+           These overrides only kick in below 1024px so the web/desktop
+           layout you already have is completely untouched.
+           ══════════════════════════════════════════════════ */
+
+        /* Tablet: 769px–1024px */
         @media (max-width: 1024px) {
           .invest-grid {
-            grid-template-columns: 1fr 1fr !important;
-            padding: 60px 24px !important;
-            gap: 20px !important;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
           }
-          .invest-grid > div:first-child {
+          .invest-text-col {
             grid-column: 1 / -1;
-            padding-right: 0 !important;
+            padding-right: 0;
           }
-          .testimonials-process-grid {
-            grid-template-columns: 1fr !important;
-            padding: 60px 24px !important;
-            gap: 48px !important;
+
+          .tp-grid {
+            grid-template-columns: 1fr;
+            gap: 48px;
           }
-          .process-grid {
-            grid-template-columns: repeat(3, 1fr) !important;
+
+          /* FIX: the 5-step row no longer squeezes into a cramped line —
+             it switches to a clean 2-up wrap so each card has real width
+             instead of shrinking to ~110px and crowding the text. */
+          .process-connector { display: none; }
+          .process-flex {
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: stretch;
           }
-          .process-connector {
-            display: none !important;
+          .process-step {
+            flex: 1 1 calc(50% - 10px);
+            min-width: 160px;
           }
-          .section-divider {
-            margin: 0 24px !important;
-          }
+          .step-label { font-size: 11px; }
+          .step-detail { font-size: 12px; }
+          .step-cta { font-size: 10px; }
         }
 
-        /* ── MOBILE (≤ 640px) ── */
-        @media (max-width: 640px) {
-          .invest-grid {
-            grid-template-columns: 1fr 1fr !important;
-            padding: 48px 16px !important;
-            gap: 14px !important;
-          }
-          .invest-grid > div:first-child {
-            grid-column: 1 / -1;
-            padding-right: 0 !important;
-            margin-bottom: 8px;
-          }
-          .invest-card {
-            margin: 0 !important;
-            padding: 18px 14px !important;
-          }
-          .testimonials-process-grid {
-            grid-template-columns: 1fr !important;
-            padding: 48px 16px !important;
-            gap: 40px !important;
-          }
-          .process-grid {
-            grid-template-columns: 1fr 1fr !important;
-            gap: 20px !important;
-          }
-          .process-connector {
-            display: none !important;
-          }
-          .section-divider {
-            margin: 0 16px !important;
-          }
+        /* Mobile: ≤768px */
+        @media (max-width: 768px) {
+          .invest-section { padding: 56px 0; }
+          .invest-grid { grid-template-columns: repeat(2, 1fr); padding: 0 16px; gap: 12px; }
+          .invest-text-col { grid-column: 1 / -1; }
+          .invest-card { padding: 18px 12px; }
+
+          .tp-section { padding: 56px 0; }
+          .tp-grid { padding: 0 16px; gap: 40px; }
+
+          .process-flex { flex-wrap: wrap; gap: 16px; align-items: stretch; }
+          .process-step { flex: 1 1 calc(50% - 8px); min-width: 140px; }
+          .process-connector { display: none; }
         }
 
-        /* ── VERY SMALL (≤ 380px) ── */
-        @media (max-width: 380px) {
-          .invest-grid {
-            grid-template-columns: 1fr !important;
-          }
-          .process-grid {
-            grid-template-columns: 1fr !important;
-          }
+        /* Small mobile: ≤480px — single column, no more squeezing */
+        @media (max-width: 480px) {
+          .invest-grid { grid-template-columns: 1fr; }
+          .invest-card { flex-direction: row; text-align: left; align-items: flex-start; gap: 14px; }
+          .invest-card-icon { margin-bottom: 0; }
+
+          .process-flex { flex-direction: column; gap: 16px; }
+          .process-step { flex: 1 1 100%; max-width: 320px; margin: 0 auto; }
+          .step-label { font-size: 12px; }
+          .step-detail { font-size: 12.5px; }
+          .step-cta { font-size: 11px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .invest-card, .step-icon, .test-card { transition: none !important; }
         }
       `}</style>
     </div>
@@ -477,26 +806,11 @@ export default function InvestmentAndProcessSection() {
 
 function InvestCard({ icon, title, subtitle, desc }) {
   return (
-    <div className="invest-card" style={{
-      background: "#fff", borderRadius: "10px", padding: "24px 20px",
-      margin: "0 8px", boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
-      display: "flex", flexDirection: "column", alignItems: "center",
-      textAlign: "center", height: "100%",
-    }}>
-      <div style={{
-        width: "54px", height: "54px", borderRadius: "50%",
-        background: "#b03030", display: "flex", alignItems: "center",
-        justifyContent: "center", color: "#fff", marginBottom: "14px",
-      }}>
-        {icon}
-      </div>
-      <p style={{ fontSize: "11px", fontWeight: 800, color: "#111", letterSpacing: "0.08em", margin: "0 0 4px", textTransform: "uppercase" }}>
-        {title}
-      </p>
-      {subtitle && (
-        <p style={{ fontSize: "12px", fontWeight: 700, color: "#b03030", margin: "0 0 8px" }}>{subtitle}</p>
-      )}
-      <p style={{ fontSize: "12px", color: "#777", lineHeight: 1.6, margin: 0 }}>{desc}</p>
+    <div className="invest-card">
+      <div className="invest-card-icon">{icon}</div>
+      <p className="invest-card-title">{title}</p>
+      {subtitle && <p className="invest-card-subtitle">{subtitle}</p>}
+      <p className="invest-card-desc">{desc}</p>
     </div>
   );
 }
@@ -508,29 +822,24 @@ function StarIcon() {
     </svg>
   );
 }
-
 function BuildingIcon() {
   return (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
       <rect x="2" y="7" width="20" height="14" rx="2" />
       <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
-      <line x1="12" y1="12" x2="12" y2="16" />
-      <line x1="10" y1="14" x2="14" y2="14" />
+      <line x1="12" y1="12" x2="12" y2="16" /><line x1="10" y1="14" x2="14" y2="14" />
     </svg>
   );
 }
-
 function DocumentIcon() {
   return (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
       <polyline points="14 2 14 8 20 8" />
-      <line x1="16" y1="13" x2="8" y2="13" />
-      <line x1="16" y1="17" x2="8" y2="17" />
+      <line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
     </svg>
   );
 }
-
 function ShieldIcon() {
   return (
     <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">

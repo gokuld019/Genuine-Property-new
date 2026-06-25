@@ -1,3 +1,7 @@
+"use client";
+
+import Link from 'next/link';
+
 export default function Footer() {
   return (
     <>
@@ -141,7 +145,7 @@ export default function Footer() {
         }
 
         .gpd-logo {
-          height: 48px;
+          height: 70px;
           object-fit: contain;
           margin-bottom: 16px;
           display: block;
@@ -248,7 +252,7 @@ export default function Footer() {
 
           {/* Col 1 – Brand */}
           <div>
-            <img src="/logo.png" alt="Genuine Property Developers" className="gpd-logo" />
+            <img src="/uplogo.png" alt="Genuine Property Developers" className="gpd-logo" />
             <p className="gpd-brand-desc">
               Premium plotted developments in prime locations. Where your future takes root and grows.
             </p>
@@ -270,19 +274,24 @@ export default function Footer() {
           <div>
             <h4 className="gpd-col-heading">Quick Links</h4>
             <ul className="gpd-link-list">
-              {["Home", "About Us", "Plots", "Amenities", "Why Genuine", "Gallery", "Contact Us"].map((item) => (
-                <li key={item}><a href="#">{item}</a></li>
-              ))}
+              <li><Link href="/">Home</Link></li>
+              <li><Link href="/aboutus">About Us</Link></li>
+              {/* <li><Link href="/projects">Projects</Link></li> */}
+              <li><Link href="/emicalculator">Emi Calculator</Link></li>
+              {/* <li><Link href="/why-genuine">Why Genuine</Link></li> */}
+              {/* <li><Link href="/gallery">Gallery</Link></li> */}
+              <li><Link href="/contactus">Contact Us</Link></li>
             </ul>
           </div>
 
           {/* Col 3 – Plot Types */}
           <div>
-            <h4 className="gpd-col-heading">Plot Types</h4>
+            <h4 className="gpd-col-heading">Ongoing Projects</h4>
             <ul className="gpd-link-list">
-              {["Residential Plots", "Premium Plots", "Corner Plots", "Commercial Plots", "Villa Plots"].map((item) => (
-                <li key={item}><a href="#">{item}</a></li>
-              ))}
+              <li><Link href="/projects/rathinam-garden">Rathinam Garden</Link></li>
+              <li><Link href="/projects/alankar-sunrise">Alankar Sunrise</Link></li>
+              <li><Link href="/projects/amudham-foundation">Amudham Foundation</Link></li>
+              
             </ul>
           </div>
 
@@ -296,14 +305,19 @@ export default function Footer() {
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                   <circle cx="12" cy="10" r="3" />
                 </svg>
-                <span>123, Anna Salai, Chennai,<br />Tamil Nadu – 600002</span>
+                <span>
+                  Genuine Property Developers,<br />
+                  7/37 Kakkan Street,<br />
+                  West Tambaram,<br />
+                  Chennai - 600045
+                </span>
               </div>
 
               <div className="gpd-contact-row" style={{ alignItems: "center" }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b03030" strokeWidth="2" style={{ flexShrink: 0 }}>
                   <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.23h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.85a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16.92z" />
                 </svg>
-                <a href="tel:+919999999999">+91 99999 99999</a>
+                <a href="tel:+919999999999">+91 93639 39696</a>
               </div>
 
               <div className="gpd-contact-row" style={{ alignItems: "center" }}>
@@ -324,9 +338,9 @@ export default function Footer() {
             © {new Date().getFullYear()} Genuine Property Developers. All rights reserved.
           </p>
           <div className="gpd-bottom-links">
-            {["Privacy Policy", "Terms of Use", "RERA Info"].map((item) => (
-              <a key={item} href="#">{item}</a>
-            ))}
+            <Link href="/privacy-policy">Privacy Policy</Link>
+            <Link href="/terms-of-use">Terms of Use</Link>
+            <Link href="/rera-info">RERA Info</Link>
           </div>
         </div>
       </footer>
